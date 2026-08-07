@@ -188,3 +188,15 @@
   100% { transform: translateY(-300px) scaleY(3); opacity: 0; }
 }
 .animate-warp-streak { animation: warp-streak 1s linear infinite; }
+
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.5s ease-out; }
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float-y { animation: float-y 4s ease-in-out infinite; }
