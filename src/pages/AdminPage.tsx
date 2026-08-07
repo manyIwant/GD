@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/db/supabase';
-import { HudPanel, DataItem, EmptyState } from '@/components/common/Hud';
+import { HudPanel, EmptyState } from '@/components/common/Hud';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Shield, Users, Gauge, Star, Zap, Radio } from 'lucide-react';
+import { Shield, Users, Gauge, Star, Radio, Ban, ShieldCheck } from 'lucide-react';
 import { fmtPrice, fmtLY } from '@/data/pricing';
 import { toast } from 'sonner';
 
@@ -25,6 +25,7 @@ interface AdminProfile {
   level: number;
   light_years: number;
   sign_in_streak: number;
+  banned: boolean;
   created_at: string;
 }
 
@@ -53,27 +54,45 @@ export default function AdminPage() {
   const [profiles, setProfiles] = useState<AdminProfile[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actioningId, setActioningId] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [s, p, o] = await Promise.all([
+        supabase.rpc('get_admin_stats'),
+        supabase.rpc('get_all_profiles'),
+        supabase.rpc('get_all_orders'),
+      ]);
+      setStats(s.data as AdminStats);
+      setProfiles((p.data || []) as AdminProfile[]);
+      setOrders((o.data || []) as AdminOrder[]);
+    } catch (e: any) {
+      toast.error(e.message || '加载管理数据失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (profile?.role !== 'admin') return;
-    (async () => {
-      setLoading(true);
-      try {
-        const [s, p, o] = await Promise.all([
-          supabase.rpc('get_admin_stats'),
-          supabase.rpc('get_all_profiles'),
-          supabase.rpc('get_all_orders'),
-        ]);
-        setStats(s.data as AdminStats);
-        setProfiles((p.data || []) as AdminProfile[]);
-        setOrders((o.data || []) as AdminOrder[]);
-      } catch (e: any) {
-        toast.error(e.message || '加载管理数据失败');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [profile]);
+    loadData();
+  }, [profile, loadData]);
+
+  const handleBanToggle = async (p: AdminProfile) => {
+    setActioningId(p.id);
+    try {
+      const rpc = p.banned ? 'unban_user' : 'ban_user';
+      const { error } = await supabase.rpc(rpc, { p_user_id: p.id });
+      if (error) throw error;
+      toast.success(p.banned ? `已解封 ${p.username}` : `已封禁 ${p.username}`);
+      await loadData();
+    } catch (e: any) {
+      toast.error(e.message || '操作失败');
+    } finally {
+      setActioningId(null);
+    }
+  };
 
   if (profile?.role !== 'admin') {
     return (
@@ -145,10 +164,11 @@ export default function AdminPage() {
                   <tr className="border-b border-border">
                     <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">航行员</th>
                     <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">角色</th>
+                    <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">状态</th>
                     <th className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">等级</th>
-                    <th className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">XP</th>
                     <th className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">余额</th>
                     <th className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">光年</th>
+                    <th className="px-3 py-2 text-center text-muted-foreground whitespace-nowrap">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -158,10 +178,28 @@ export default function AdminPage() {
                       <td className="px-3 py-2 whitespace-nowrap">
                         <span className={p.role === 'admin' ? 'text-laser font-bold' : 'text-muted-foreground'}>{p.role === 'admin' ? '管理员' : '航行员'}</span>
                       </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={p.banned ? 'text-red-400 font-bold' : 'text-green-400 font-bold'}>
+                          {p.banned ? '⛔ 已封禁' : '✅ 正常'}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-right font-mono-num text-foreground whitespace-nowrap">Lv{p.level}</td>
-                      <td className="px-3 py-2 text-right font-mono-num text-foreground whitespace-nowrap">{p.xp}</td>
                       <td className="px-3 py-2 text-right font-mono-num text-laser whitespace-nowrap">{fmtPrice(p.balance)}</td>
                       <td className="px-3 py-2 text-right font-mono-num text-foreground whitespace-nowrap">{fmtLY(p.light_years)}</td>
+                      <td className="px-3 py-2 text-center whitespace-nowrap">
+                        {p.role !== 'admin' && (
+                          <Button
+                            size="sm"
+                            variant={p.banned ? 'outline' : 'default'}
+                            disabled={actioningId === p.id}
+                            onClick={() => handleBanToggle(p)}
+                            className={`btn-mech text-xs ${p.banned ? 'text-green-400 hover:text-green-300' : 'bg-red-500/80 text-white hover:bg-red-500'}`}
+                          >
+                            {p.banned ? <ShieldCheck className="w-3 h-3 mr-1" /> : <Ban className="w-3 h-3 mr-1" />}
+                            {p.banned ? '解封' : '封禁'}
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
