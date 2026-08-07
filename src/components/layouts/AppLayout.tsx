@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target } from 'lucide-react';
+import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield } from 'lucide-react';
 import { fmtPrice } from '@/data/pricing';
 
 const NAV_ITEMS = [
@@ -51,6 +51,25 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <span>{item.label}</span>
         </NavLink>
       ))}
+      {profile?.role === 'admin' && (
+        <>
+          <div className="px-3 pt-4 pb-1 text-[9px] text-muted-foreground/60 uppercase tracking-[0.2em]">管理</div>
+          <NavLink
+            to="/admin"
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 text-sm border-l-2 transition-colors btn-mech ${
+                isActive
+                  ? 'border-yellow-400 bg-yellow-400/10 text-yellow-400'
+                  : 'border-transparent text-yellow-400/70 hover:text-yellow-400 hover:bg-muted/50'
+              }`
+            }
+          >
+            <Shield className="w-4 h-4 shrink-0" />
+            <span>管理控制台</span>
+          </NavLink>
+        </>
+      )}
     </nav>
   );
 
@@ -125,7 +144,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-bold text-sm tracking-wider">高德星际</span>
           </div>
           <Button asChild size="sm" className="btn-mech bg-laser text-primary-foreground hover:bg-laser/90">
-            <a href="/#/"><Zap className="w-3 h-3 mr-1" />充值</a>
+            <a href="/GD/"><Zap className="w-3 h-3 mr-1" />充值</a>
           </Button>
         </header>
 
