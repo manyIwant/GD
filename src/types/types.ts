@@ -160,6 +160,16 @@ export interface CosmicEvent {
   title: string;
   body: string;
   cond: (p: number) => boolean;
+  choices?: EventChoice[];
+}
+
+export interface EventChoice {
+  label: string;
+  type: 'game' | 'reward' | 'risk';
+  desc: string;
+  rewardXp?: number;
+  rewardBalance?: number;
+  riskBalance?: number;
 }
 
 export interface LeaderboardEntry {
