@@ -27,8 +27,36 @@ export default function StarMapPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [exploreEvent, setExploreEvent] = useState<ExploreEvent | null>(null);
   const [exploreResult, setExploreResult] = useState<{ success: boolean; ev: ExploreEvent } | null>(null);
+  const [warpProgress, setWarpProgress] = useState(0);
   const scanRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  // 宇宙广播轮播
+  const broadcasts = useMemo(
+    () => [
+      '📡 川陀帝国广播：今日星历稳定，银河贸易指数上涨 3.2%',
+      '📡 端点基地：第一基地百科全书编纂进度 87%，预计下个纪元完成',
+      '📡 自由商盟：巴纳德星中转站开放深空移民名额，名额有限',
+      '📡 天文台预警：人马座A*黑洞周边时空扰动加剧，建议绕行',
+      '📡 探索者联盟：大麦哲伦云前哨发现新型超新星遗迹，正在解析',
+      '📡 翁法罗斯残响：忆庭之镜发出微弱信号，含义不明',
+      '📡 织女星戴森云：能源输出创新高，河外文明信号疑似回应',
+      '📡 三体世界档案：乱纪元持续中，遗迹探索风险等级上调',
+    ],
+    []
+  );
+  const [broadcastIdx, setBroadcastIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setBroadcastIdx((i) => (i + 1) % broadcasts.length), 5000);
+    return () => clearInterval(t);
+  }, [broadcasts.length]);
+
+  // 曲速进度
+  useEffect(() => {
+    if (!warping) { setWarpProgress(0); return; }
+    const t = setInterval(() => setWarpProgress((p) => Math.min(100, p + 4)), 100);
+    return () => clearInterval(t);
+  }, [warping]);
 
   // 飞船平滑移动
   useEffect(() => {
@@ -50,11 +78,15 @@ export default function StarMapPage() {
     if (node.id === 'home') { toast.info('🏠 你已在母港'); return; }
     setWarpTarget(node);
     setWarping(true);
+    // 曲速前往时先收起信息框，航行中显示曲速提示
+    setSelected(null);
     setShipTarget({ x: node.x, y: node.y });
+    toast.info(`🚀 曲速引擎启动，目标：${node.name}…`);
     setTimeout(() => {
       setWarping(false);
       setDiscovered((prev) => { const n = new Set(prev); n.add(node.id); return n; });
       toast.success(`🚀 曲速航行完成！已抵达 ${node.name}`);
+      // 抵达后重新弹出信息框，展示更新后的界面
       setSelected(node);
       if (Math.random() < 0.5) setTimeout(() => setExploreEvent(pickExploreEvent()), 600);
     }, 2600);
@@ -238,6 +270,25 @@ export default function StarMapPage() {
           {warping && warpTarget && (
             <div className="absolute top-1/2 left-0 w-20 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent -translate-y-1/2" />
           )}
+          {warping && warpTarget && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-28 bg-black/80 border border-cyan-500/50 px-2 py-1">
+              <div className="text-[9px] text-cyan-400 font-mono-num text-center">曲速 {warpProgress}%</div>
+              <div className="w-full h-1 bg-white/10 mt-1 overflow-hidden">
+                <div className="h-full bg-cyan-400 transition-all duration-100" style={{ width: `${warpProgress}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 宇宙广播滚动条 */}
+      <div className="absolute bottom-20 md:bottom-24 left-0 right-0 z-20 px-4 pointer-events-none">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-black/60 border border-cyan-500/20 backdrop-blur-sm px-3 py-1.5 overflow-hidden">
+            <span key={broadcastIdx} className="text-[10px] md:text-xs text-cyan-300/80 font-mono-num animate-fade-in">
+              {broadcasts[broadcastIdx]}
+            </span>
+          </div>
         </div>
       </div>
 
