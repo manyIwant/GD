@@ -66,6 +66,20 @@ export async function recharge(userId: string, amount: number): Promise<void> {
   await updateBalance(userId, amount);
 }
 
+// 增加经验值
+export async function addXp(userId: string, amount: number): Promise<void> {
+  const { error } = await supabase.rpc('inc_xp', { p_user_id: userId, p_amount: amount });
+  if (error) {
+    const profile = await fetchProfile(userId);
+    if (profile) await updateProfile(userId, { xp: (profile.xp || 0) + amount });
+  }
+}
+
+// 扣除信用点（事件惩罚等）
+export async function deductBalance(userId: string, amount: number): Promise<void> {
+  await updateBalance(userId, -amount);
+}
+
 // ===== Orders =====
 export async function fetchOrders(userId: string): Promise<OrderRow[]> {
   const { data, error } = await supabase
