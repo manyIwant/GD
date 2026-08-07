@@ -201,6 +201,21 @@ export function useGameStore() {
     toast.success('⚡ 充值成功', { description: `+${amount.toLocaleString()} 信用点` });
   }, [user, refreshProfile, loadAll]);
 
+  // 增加经验（宇宙事件奖励）
+  const addXp = useCallback(async (amount: number) => {
+    if (!user) return;
+    await api.addXp(user.id, amount);
+    await refreshProfile();
+  }, [user, refreshProfile]);
+
+  // 扣除信用点（事件惩罚）
+  const deductBalance = useCallback(async (amount: number) => {
+    if (!user) return;
+    await api.deductBalance(user.id, amount);
+    await refreshProfile();
+    await loadAll();
+  }, [user, refreshProfile, loadAll]);
+
   // 选择飞船
   const selectShip = useCallback(async (code: string) => {
     if (!user) return;
@@ -231,7 +246,7 @@ export function useGameStore() {
     user, profile, orders, achievements, dailyTasks, flightLogs, unlockedShips,
     loading, activeOrderId, setActiveOrderId,
     loadAll, placeOrder, boardOrder, cancelOrder, completeFlight,
-    doSignIn, claimTask, recharge, selectShip, unlockShipByCode, incProgress, checkTrisolaris,
+    doSignIn, claimTask, recharge, addXp, deductBalance, selectShip, unlockShipByCode, incProgress, checkTrisolaris,
   };
 }
 
