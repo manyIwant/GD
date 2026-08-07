@@ -8,7 +8,7 @@ import { getLevelByXp, getNextLevel, getLevelProgress } from '@/data/levels';
 import { getShip } from '@/data/ships';
 import { fmtPrice, fmtLY } from '@/data/pricing';
 import { CANDIDATES, buildWP } from '@/data/waypoints';
-import { Search, Plus, MapPin, Trophy, Target, Ship, BookOpen, Zap, ChevronRight } from 'lucide-react';
+import { Search, Plus, MapPin, Trophy, Target, Ship, BookOpen, Zap, ChevronRight, Orbit, Wrench } from 'lucide-react';
 
 export default function HomePage() {
   const { profile } = useAuth();
@@ -95,6 +95,35 @@ export default function HomePage() {
           </div>
         </div>
       </HudPanel>
+
+      {/* 个人探索大项目入口 */}
+      <button
+        onClick={() => navigate('/galaxy')}
+        className="w-full mb-5 relative overflow-hidden border border-cyan-500/40 btn-mech group"
+        style={{ background: 'linear-gradient(120deg, rgba(6,182,212,0.12) 0%, rgba(124,58,237,0.12) 100%)' }}
+      >
+        <div className="absolute inset-0 pointer-events-none opacity-40">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 blur-[60px]" />
+          <div className="absolute bottom-0 left-1/4 w-40 h-40 bg-purple-500/10 blur-[50px]" />
+        </div>
+        <div className="relative p-5 flex items-center gap-4">
+          <div className="text-5xl shrink-0 group-hover:scale-110 transition-transform">🌌</div>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="flex items-center gap-2 mb-1">
+              <Orbit className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm font-bold text-cyan-400">个人探索 · 银河星图</span>
+              <span className="text-[9px] px-1.5 py-px rounded bg-cyan-500/20 text-cyan-400">大项目</span>
+            </div>
+            <div className="text-xs text-foreground/80 leading-relaxed text-pretty">设计你的专属探索舰，曲速航行探索未知星域，收集神秘纪念品，打造属于你的银河版图。</div>
+            <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1"><Wrench className="w-3 h-3 text-purple-400" />飞船设计</span>
+              <span className="flex items-center gap-1"><Orbit className="w-3 h-3 text-cyan-400" />曲速探索</span>
+              <span className="flex items-center gap-1">🎁 纪念品</span>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-cyan-400 shrink-0 group-hover:translate-x-1 transition-transform" />
+        </div>
+      </button>
 
       {/* 搜索栏 */}
       <HudPanel title="航线搜索" className="mb-5">
