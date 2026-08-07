@@ -1,17 +1,17 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield, Orbit } from 'lucide-react';
+import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield, Orbit, Compass, Wrench, Gift, ChevronRight } from 'lucide-react';
 import { fmtPrice } from '@/data/pricing';
 
+// 星际航行模式导航
 const NAV_ITEMS = [
   { to: '/', label: '首页', icon: Rocket },
   { to: '/route', label: '航线', icon: MapPin },
   { to: '/orders', label: '订单', icon: Gauge },
   { to: '/monitor', label: '监控', icon: Radio },
-  { to: '/galaxy', label: '银河星图', icon: Orbit },
   { to: '/destinations', label: '目的地', icon: Target },
   { to: '/level', label: '等级成就', icon: Award },
   { to: '/tasks', label: '每日任务', icon: Target },
@@ -21,10 +21,32 @@ const NAV_ITEMS = [
   { to: '/comm', label: '通讯', icon: Radio },
 ];
 
+// 个人探索模式导航
+const EXPLORE_ITEMS = [
+  { to: '/galaxy', label: '银河星图', icon: Orbit },
+  { to: '/ship-designer', label: '飞船设计', icon: Wrench },
+  { to: '/mementos', label: '探索纪念品', icon: Gift },
+];
+
+function isExplorePath(pathname: string) {
+  return ['/galaxy', '/ship-designer', '/mementos'].some((p) => pathname.startsWith(p));
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mode, setMode] = useState<'nav' | 'explore'>(() => (isExplorePath(location.pathname) ? 'explore' : 'nav'));
+
+  const switchMode = (m: 'nav' | 'explore') => {
+    setMode(m);
+    if (m === 'explore' && !isExplorePath(location.pathname)) {
+      navigate('/galaxy');
+    } else if (m === 'nav' && isExplorePath(location.pathname)) {
+      navigate('/');
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -32,9 +54,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
+  const currentItems = mode === 'explore' ? EXPLORE_ITEMS : NAV_ITEMS;
+
   const NavList = ({ onNavigate }: { onNavigate?: () => void }) => (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.map((item) => (
+      {currentItems.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -74,6 +98,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </nav>
   );
 
+  // 模式切换器
+  const ModeSwitcher = () => (
+    <div className="p-3 border-b border-border">
+      <div className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.2em] mb-2">模式切换</div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <button
+          onClick={() => switchMode('nav')}
+          className={`flex items-center gap-1.5 px-2 py-2 border btn-mech text-xs transition-all ${
+            mode === 'nav' ? 'border-laser bg-laser/10 text-laser' : 'border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Rocket className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-bold">星际航行</span>
+        </button>
+        <button
+          onClick={() => switchMode('explore')}
+          className={`flex items-center gap-1.5 px-2 py-2 border btn-mech text-xs transition-all ${
+            mode === 'explore' ? 'border-cyan-400 bg-cyan-400/10 text-cyan-400' : 'border-border text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Compass className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-bold">个人探索</span>
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen w-full relative">
       {/* 桌面端侧边栏 */}
@@ -93,6 +144,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="text-xs font-bold text-laser font-mono-num">{fmtPrice(profile?.balance || 0)}</span>
           </div>
         </div>
+
+        <ModeSwitcher />
 
         <div className="flex-1 overflow-y-auto py-2">
           <NavList />
@@ -130,7 +183,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <span className="text-xs font-bold text-laser font-mono-num">{fmtPrice(profile?.balance || 0)}</span>
                 </div>
               </div>
-              <div className="py-2 overflow-y-auto" style={{ height: 'calc(100% - 180px)' }}>
+              <ModeSwitcher />
+              <div className="py-2 overflow-y-auto" style={{ height: 'calc(100% - 280px)' }}>
                 <NavList onNavigate={() => setMobileOpen(false)} />
               </div>
               <div className="p-3 border-t border-border absolute bottom-0 left-0 right-0">
@@ -143,6 +197,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-laser laser-line" />
             <span className="font-bold text-sm tracking-wider">高德星际</span>
+            <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            <span className={`text-xs font-bold ${mode === 'explore' ? 'text-cyan-400' : 'text-laser'}`}>
+              {mode === 'explore' ? '个人探索' : '星际航行'}
+            </span>
           </div>
           <Button asChild size="sm" className="btn-mech bg-laser text-primary-foreground hover:bg-laser/90">
             <a href="/GD/"><Zap className="w-3 h-3 mr-1" />充值</a>
