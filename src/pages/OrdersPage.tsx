@@ -56,7 +56,7 @@ function OrderCard({ order, store }: { order: OrderRow; store: ReturnType<typeof
         <div className="flex gap-2 mt-3">
           {order.status === 'pending' && (
             <>
-              <Button size="sm" className="flex-1 btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={() => { store.setActiveOrderId(order.id); navigate('/monitor'); }}>
+              <Button size="sm" className="flex-1 btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={() => { store.boardOrder(order.id).then(() => navigate('/monitor')); }}>
                 <Rocket className="w-3.5 h-3.5 mr-1" /> 登船启航
               </Button>
               <Button size="sm" variant="outline" className="btn-mech text-red-400 hover:text-red-300" onClick={() => store.cancelOrder(order.id)}>
