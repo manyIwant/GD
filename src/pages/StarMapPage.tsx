@@ -2,44 +2,16 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { HudPanel, AlertBar } from '@/components/common/Hud';
+import { HudPanel } from '@/components/common/Hud';
+import ParticleNetwork from '@/components/common/ParticleNetwork';
 import { STAR_NODES, STAR_LINKS, STAR_TYPE_META } from '@/data/galaxyMap';
 import type { StarNode } from '@/data/galaxyMap';
 import { pickExploreEvent, MEMENTOS, EXPLORE_ACHIEVEMENTS } from '@/data/exploreEvents';
 import type { ExploreEvent } from '@/data/exploreEvents';
 import { useGameStore } from '@/hooks/useGameStore';
 import { fmtPrice } from '@/data/pricing';
-import { Rocket, Telescope, Zap, Lock, Star as StarIcon, Compass, Gift, Trophy, Wrench } from 'lucide-react';
+import { Rocket, Telescope, Zap, Lock, Star as StarIcon, Compass, Wrench, Users, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-
-// 生成静态背景星星
-function useStars(count: number) {
-  return useMemo(
-    () =>
-      Array.from({ length: count }, () => ({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        r: Math.random() * 1.5 + 0.3,
-        o: Math.random() * 0.6 + 0.2,
-        d: Math.random() * 4 + 2,
-      })),
-    [count]
-  );
-}
-
-// 生成星云粒子
-function useNebula(count: number) {
-  return useMemo(
-    () =>
-      Array.from({ length: count }, () => ({
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        s: Math.random() * 200 + 80,
-        c: ['rgba(124,58,237,0.08)', 'rgba(6,182,212,0.08)', 'rgba(236,72,153,0.06)'][Math.floor(Math.random() * 3)],
-      })),
-    [count]
-  );
-}
 
 export default function StarMapPage() {
   const navigate = useNavigate();
@@ -49,26 +21,16 @@ export default function StarMapPage() {
   const [discovered, setDiscovered] = useState<Set<string>>(new Set(STAR_NODES.filter((n) => n.status === 'discovered').map((n) => n.id)));
   const [warping, setWarping] = useState(false);
   const [warpTarget, setWarpTarget] = useState<StarNode | null>(null);
-  const [shipPos, setShipPos] = useState({ x: 50, y: 50 });
-  const [shipTarget, setShipTarget] = useState({ x: 50, y: 50 });
+  const [shipPos, setShipPos] = useState({ x: 50, y: 52 });
+  const [shipTarget, setShipTarget] = useState({ x: 50, y: 52 });
   const [scanOpen, setScanOpen] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [mouse, setMouse] = useState({ x: 50, y: 50 });
   const [exploreEvent, setExploreEvent] = useState<ExploreEvent | null>(null);
   const [exploreResult, setExploreResult] = useState<{ success: boolean; ev: ExploreEvent } | null>(null);
   const scanRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stars = useStars(180);
-  const nebula = useNebula(6);
   const mapRef = useRef<HTMLDivElement>(null);
 
-  // 鼠标引力追踪
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!mapRef.current) return;
-    const rect = mapRef.current.getBoundingClientRect();
-    setMouse({ x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 });
-  }, []);
-
-  // 飞船平滑移动到目标
+  // 飞船平滑移动
   useEffect(() => {
     if (shipPos.x === shipTarget.x && shipPos.y === shipTarget.y) return;
     const t = setInterval(() => {
@@ -77,42 +39,27 @@ export default function StarMapPage() {
         const dy = shipTarget.y - p.y;
         const dist = Math.hypot(dx, dy);
         if (dist < 0.5) return shipTarget;
-        const step = Math.min(dist, 1.5);
+        const step = Math.min(dist, 1.4);
         return { x: p.x + (dx / dist) * step, y: p.y + (dy / dist) * step };
       });
     }, 30);
     return () => clearInterval(t);
   }, [shipTarget, shipPos]);
 
-  // 曲速航行：移动飞船 + 解锁星球 + 触发探索事件
-  const warpTo = useCallback(
-    (node: StarNode) => {
-      if (node.id === 'home') {
-        toast.info('🏠 你已在母港');
-        return;
-      }
-      setWarpTarget(node);
-      setWarping(true);
-      setShipTarget({ x: node.x, y: node.y });
-      setTimeout(() => {
-        setWarping(false);
-        setDiscovered((prev) => {
-          const next = new Set(prev);
-          next.add(node.id);
-          return next;
-        });
-        toast.success(`🚀 曲速航行完成！已抵达 ${node.name}`);
-        setSelected(node);
-        // 50% 概率触发探索事件
-        if (Math.random() < 0.5) {
-          setTimeout(() => setExploreEvent(pickExploreEvent()), 600);
-        }
-      }, 2600);
-    },
-    []
-  );
+  const warpTo = useCallback((node: StarNode) => {
+    if (node.id === 'home') { toast.info('🏠 你已在母港'); return; }
+    setWarpTarget(node);
+    setWarping(true);
+    setShipTarget({ x: node.x, y: node.y });
+    setTimeout(() => {
+      setWarping(false);
+      setDiscovered((prev) => { const n = new Set(prev); n.add(node.id); return n; });
+      toast.success(`🚀 曲速航行完成！已抵达 ${node.name}`);
+      setSelected(node);
+      if (Math.random() < 0.5) setTimeout(() => setExploreEvent(pickExploreEvent()), 600);
+    }, 2600);
+  }, []);
 
-  // 扫描（探索）动画
   const startScan = useCallback(() => {
     if (!selected) return;
     setScanOpen(true);
@@ -123,16 +70,9 @@ export default function StarMapPage() {
         if (p >= 100) {
           if (scanRef.current) clearInterval(scanRef.current);
           setScanOpen(false);
-          setDiscovered((prev) => {
-            const next = new Set(prev);
-            next.add(selected.id);
-            return next;
-          });
+          setDiscovered((prev) => { const n = new Set(prev); n.add(selected.id); return n; });
           toast.success(`🔭 扫描完成！${selected.name} 已加入你的银河版图`);
-          // 扫描也有概率触发事件
-          if (Math.random() < 0.4) {
-            setTimeout(() => setExploreEvent(pickExploreEvent()), 500);
-          }
+          if (Math.random() < 0.4) setTimeout(() => setExploreEvent(pickExploreEvent()), 500);
           return 100;
         }
         return p + 4;
@@ -142,40 +82,21 @@ export default function StarMapPage() {
 
   useEffect(() => () => { if (scanRef.current) clearInterval(scanRef.current); }, []);
 
-  // 处理探索事件结果
   const resolveExploreEvent = async () => {
     if (!exploreEvent) return;
     const success = Math.random() < exploreEvent.successRate;
     setExploreEvent(null);
     setExploreResult({ success, ev: exploreEvent });
-
     if (success) {
       const ev = exploreEvent;
-      if (ev.rewardType === 'credit') {
-        await store.recharge(ev.rewardValue);
-        toast.success(`✨ 探索成功！获得 ${fmtPrice(ev.rewardValue)} 信用点`);
-      } else if (ev.rewardType === 'xp') {
-        await store.addXp(ev.rewardValue);
-        toast.success(`✨ 探索成功！获得 ${ev.rewardValue} XP`);
-      } else if (ev.rewardType === 'memento') {
-        const m = MEMENTOS[Math.floor(Math.random() * MEMENTOS.length)];
-        await store.addMemento(m.name, m.desc, m.emoji);
-        toast.success(`✨ 探索成功！获得神秘纪念品 ${m.emoji} ${m.name}`);
-        await store.unlockExploreAchievement(EXPLORE_ACHIEVEMENTS[1].name);
-      } else if (ev.rewardType === 'achievement') {
-        await store.unlockExploreAchievement(EXPLORE_ACHIEVEMENTS[0].name);
-        toast.success(`✨ 探索成功！解锁成就「${EXPLORE_ACHIEVEMENTS[0].name}」`);
-      }
+      if (ev.rewardType === 'credit') { await store.recharge(ev.rewardValue); toast.success(`✨ 获得 ${fmtPrice(ev.rewardValue)} 信用点`); }
+      else if (ev.rewardType === 'xp') { await store.addXp(ev.rewardValue); toast.success(`✨ 获得 ${ev.rewardValue} XP`); }
+      else if (ev.rewardType === 'memento') { const m = MEMENTOS[Math.floor(Math.random() * MEMENTOS.length)]; await store.addMemento(m.name, m.desc, m.emoji); toast.success(`✨ 获得纪念品 ${m.emoji} ${m.name}`); await store.unlockExploreAchievement(EXPLORE_ACHIEVEMENTS[1].name); }
+      else if (ev.rewardType === 'achievement') { await store.unlockExploreAchievement(EXPLORE_ACHIEVEMENTS[0].name); toast.success(`✨ 解锁成就「${EXPLORE_ACHIEVEMENTS[0].name}」`); }
     } else {
       const ev = exploreEvent;
-      if (ev.penaltyType === 'credit') {
-        await store.deductBalance(ev.penaltyValue);
-        toast.error(`⚠ 探索失败！${ev.penaltyLabel}`);
-      } else if (ev.penaltyType === 'part') {
-        // 损失一个已装备零件：扣除零件费用作为损失
-        await store.deductBalance(ev.penaltyValue);
-        toast.error(`⚠ 探索失败！飞船一个零件受损，维修花费 ${fmtPrice(ev.penaltyValue)}`);
-      }
+      await store.deductBalance(ev.penaltyValue);
+      toast.error(`⚠ ${ev.penaltyLabel}`);
     }
   };
 
@@ -186,46 +107,36 @@ export default function StarMapPage() {
   const mementos = profile?.mementos || [];
   const achievements = profile?.explore_achievements || [];
 
-  // 检查银河制图师成就
   useEffect(() => {
     if (discoveredCount >= Math.ceil(totalCount / 2) && !achievements.includes(EXPLORE_ACHIEVEMENTS[2].name)) {
       store.unlockExploreAchievement(EXPLORE_ACHIEVEMENTS[2].name);
     }
   }, [discoveredCount, totalCount, achievements, store]);
 
+  // 节点尺寸缩放：大画布下放大显示
+  const scale = 1.6;
+
   return (
-    <div
-      ref={mapRef}
-      onMouseMove={handleMouseMove}
-      className="relative w-full min-h-[calc(100vh-64px)] md:min-h-screen overflow-hidden bg-[#03040a] cursor-crosshair"
-    >
-      {/* 深空背景渐变 */}
+    <div ref={mapRef} className="relative w-full min-h-[calc(100vh-64px)] md:min-h-screen overflow-hidden bg-[#03040a] cursor-crosshair">
+      {/* 深空背景层 */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a2e]/70 via-[#03040a] to-[#1a0a2e]/50" />
-        {/* 星云团 */}
-        {nebula.map((n, i) => (
-          <div key={i} className="absolute rounded-full blur-[80px]" style={{ left: `${n.x}%`, top: `${n.y}%`, width: n.s, height: n.s, background: n.c }} />
-        ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0a2e]/80 via-[#03040a] to-[#1a0a2e]/60" />
         {/* 银河旋臂 */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-[2/1] opacity-30"
-          style={{ background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.15) 0%, rgba(6,182,212,0.08) 30%, transparent 70%)', transform: 'translate(-50%,-50%) rotate(-15deg)' }}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[160%] aspect-[2.2/1] opacity-40"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(124,58,237,0.18) 0%, rgba(6,182,212,0.10) 30%, transparent 70%)', transform: 'translate(-50%,-50%) rotate(-18deg)' }}
         />
+        {/* 多层模糊光晕 */}
+        <div className="absolute top-[20%] left-[15%] w-64 h-64 rounded-full blur-[100px] opacity-30" style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.5), transparent)' }} />
+        <div className="absolute bottom-[15%] right-[10%] w-72 h-72 rounded-full blur-[110px] opacity-25" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.5), transparent)' }} />
+        <div className="absolute top-[60%] left-[45%] w-56 h-56 rounded-full blur-[90px] opacity-20" style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.4), transparent)' }} />
       </div>
 
-      {/* 背景星星 */}
-      <div className="absolute inset-0 pointer-events-none">
-        {stars.map((s, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full bg-white animate-twinkle"
-            style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.r, height: s.r, opacity: s.o, animationDelay: `${s.d}s`, animationDuration: `${s.d + 2}s` }}
-          />
-        ))}
-      </div>
+      {/* Canvas 粒子网络背景（粒子间连线 + 鼠标引力吸引） */}
+      <ParticleNetwork className="z-[1]" particleCount={120} connectionDist={160} mouseRadius={240} />
 
       {/* 顶部 HUD */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 md:p-6 pointer-events-none">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="pointer-events-auto">
             <h1 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
               <Compass className="w-5 h-5 md:w-6 md:h-6 text-cyan-400" /> 银河星图
@@ -254,30 +165,21 @@ export default function StarMapPage() {
 
       {/* 星图主体 */}
       <div className="absolute inset-0 z-10">
+        {/* 航线连线 */}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
-          {/* 航线连线（受鼠标引力吸引弯曲） */}
           {STAR_LINKS.map(([a, b], i) => {
             const na = STAR_NODES.find((n) => n.id === a)!;
             const nb = STAR_NODES.find((n) => n.id === b)!;
             const bothKnown = isDiscovered(a) && isDiscovered(b);
             const oneKnown = isDiscovered(a) || isDiscovered(b);
-            // 控制点：向鼠标方向偏移（引力效果）
-            const midX = (na.x + nb.x) / 2;
-            const midY = (na.y + nb.y) / 2;
-            const pullX = (mouse.x - midX) * 0.15;
-            const pullY = (mouse.y - midY) * 0.15;
-            const cx = midX + pullX;
-            const cy = midY + pullY;
             return (
-              <path
+              <line
                 key={i}
-                d={`M ${na.x} ${na.y} Q ${cx} ${cy} ${nb.x} ${nb.y}`}
-                fill="none"
-                stroke={bothKnown ? 'rgba(0,240,255,0.5)' : oneKnown ? 'rgba(167,139,250,0.3)' : 'rgba(255,255,255,0.06)'}
-                strokeWidth={bothKnown ? 0.25 : 0.12}
-                strokeDasharray={bothKnown ? '0' : '1.2,1.2'}
+                x1={na.x} y1={na.y} x2={nb.x} y2={nb.y}
+                stroke={bothKnown ? 'rgba(0,240,255,0.45)' : oneKnown ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.05)'}
+                strokeWidth={bothKnown ? 0.18 : 0.08}
+                strokeDasharray={bothKnown ? '0' : '1.5,1.5'}
                 vectorEffect="non-scaling-stroke"
-                className="transition-all duration-300"
               />
             );
           })}
@@ -287,38 +189,42 @@ export default function StarMapPage() {
         {STAR_NODES.map((node) => {
           const known = isDiscovered(node.id);
           const meta = STAR_TYPE_META[node.type];
+          const size = node.size * scale;
           return (
             <button
               key={node.id}
               type="button"
               onClick={() => setSelected(node)}
-              className="absolute -translate-x-1/2 -translate-y-1/2 group"
+              className="absolute -translate-x-1/2 -translate-y-1/2 group z-10"
               style={{ left: `${node.x}%`, top: `${node.y}%` }}
             >
+              {/* 外层光晕 */}
               <div
                 className="absolute inset-0 rounded-full animate-pulse-glow"
                 style={{
-                  width: node.size * 2.4,
-                  height: node.size * 2.4,
-                  left: -node.size * 1.2,
-                  top: -node.size * 1.2,
+                  width: size * 2.6, height: size * 2.6,
+                  left: -size * 1.3, top: -size * 1.3,
                   background: `radial-gradient(circle, ${known ? node.color : '#555'}40 0%, transparent 70%)`,
                 }}
               />
+              {/* 节点本体 */}
               <div
                 className="relative flex items-center justify-center rounded-full border-2 transition-transform group-hover:scale-125"
                 style={{
-                  width: node.size,
-                  height: node.size,
+                  width: size, height: size,
                   borderColor: known ? node.color : 'rgba(255,255,255,0.2)',
-                  background: known ? `${node.color}30` : 'rgba(30,30,50,0.6)',
-                  boxShadow: known ? `0 0 ${node.size}px ${node.color}60` : 'none',
+                  background: known ? `${node.color}30` : 'rgba(20,20,40,0.7)',
+                  boxShadow: known ? `0 0 ${size * 0.8}px ${node.color}60, inset 0 0 ${size * 0.3}px ${node.color}30` : 'none',
                 }}
               >
-                <span className="text-xs md:text-sm">{known ? meta.icon : <Lock className="w-3 h-3 text-white/40" />}</span>
+                <span className="text-base md:text-lg drop-shadow-lg">{known ? meta.icon : <Lock className="w-4 h-4 text-white/40" />}</span>
               </div>
+              {/* 名称标签 */}
               {known && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/60 border border-white/10" style={{ color: node.color }}>
+                <div
+                  className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap text-[10px] md:text-xs font-bold px-2 py-0.5 rounded bg-black/70 border"
+                  style={{ color: node.color, borderColor: `${node.color}40` }}
+                >
                   {node.name}
                 </div>
               )}
@@ -327,38 +233,24 @@ export default function StarMapPage() {
         })}
 
         {/* 玩家飞船 */}
-        <div
-          className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${shipPos.x}%`, top: `${shipPos.y}%` }}
-        >
-          <div className={`text-2xl md:text-3xl ${warping ? 'animate-warp' : ''}`}>🚀</div>
-          {warping && (
-            <div className="absolute top-1/2 left-0 w-16 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent -translate-y-1/2" />
+        <div className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: `${shipPos.x}%`, top: `${shipPos.y}%` }}>
+          <div className={`text-2xl md:text-3xl drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] ${warping ? 'animate-warp' : ''}`}>🚀</div>
+          {warping && warpTarget && (
+            <div className="absolute top-1/2 left-0 w-20 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent -translate-y-1/2" />
           )}
         </div>
       </div>
 
       {/* 底部操作栏 */}
       <div className="absolute bottom-0 left-0 right-0 z-20 p-4 md:p-6 pointer-events-none">
-        <div className="max-w-5xl mx-auto flex items-center justify-center gap-3 pointer-events-auto">
-          <Button
-            variant="outline"
-            className="btn-mech border-purple-400/50 text-purple-400 hover:bg-purple-400/10"
-            onClick={() => navigate('/ship-designer')}
-          >
+        <div className="max-w-6xl mx-auto flex items-center justify-center gap-3 pointer-events-auto flex-wrap">
+          <Button variant="outline" className="btn-mech border-purple-400/50 text-purple-400 hover:bg-purple-400/10" onClick={() => navigate('/ship-designer')}>
             <Wrench className="w-4 h-4 mr-1.5" /> 改装飞船
           </Button>
-          <Button
-            variant="outline"
-            className="btn-mech border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10"
-            onClick={() => navigate('/route')}
-          >
+          <Button variant="outline" className="btn-mech border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10" onClick={() => navigate('/route')}>
             <Rocket className="w-4 h-4 mr-1.5" /> 预订航线
           </Button>
-          <Button
-            className="btn-mech bg-cyan-500/80 text-white hover:bg-cyan-500"
-            onClick={() => { setShipTarget({ x: 50, y: 50 }); toast.info('🏠 返回母港'); }}
-          >
+          <Button className="btn-mech bg-cyan-500/80 text-white hover:bg-cyan-500" onClick={() => { setShipTarget({ x: 50, y: 52 }); toast.info('🏠 返回母港'); }}>
             <Compass className="w-4 h-4 mr-1.5" /> 回到母港
           </Button>
         </div>
@@ -386,15 +278,19 @@ export default function StarMapPage() {
                       <div className="font-bold text-red-400">{'★'.repeat(selected.danger)}</div>
                     </div>
                     <div className="p-2 bg-white/5 border border-white/10">
-                      <div className="text-[10px] text-white/40 uppercase">资源</div>
+                      <div className="text-[10px] text-white/40 uppercase">主要资源</div>
                       <div className="font-bold text-yellow-400">{selected.resource}</div>
                     </div>
                     <div className="p-2 bg-white/5 border border-white/10">
-                      <div className="text-[10px] text-white/40 uppercase">探索状态</div>
-                      <div className="font-bold text-green-400">✅ 已探索</div>
+                      <div className="text-[10px] text-white/40 uppercase">所属势力</div>
+                      <div className="font-bold text-purple-400">{selected.faction || '无'}</div>
+                    </div>
+                    <div className="p-2 bg-white/5 border border-white/10 col-span-2">
+                      <div className="text-[10px] text-white/40 uppercase flex items-center gap-1"><Users className="w-3 h-3" /> 人口规模</div>
+                      <div className="font-bold text-cyan-400">{selected.population || '未知'}</div>
                     </div>
                   </div>
-                  <p className="text-xs text-white/60 leading-relaxed">{selected.desc}</p>
+                  <p className="text-xs text-white/60 leading-relaxed text-pretty">{selected.desc}</p>
                 </>
               ) : (
                 <>
@@ -403,7 +299,7 @@ export default function StarMapPage() {
                     <div className="text-sm font-bold text-white/60">未知区域</div>
                     <div className="text-[11px] text-white/40 mt-1">需要曲速航行或扫描才能发现</div>
                   </div>
-                  <p className="text-xs text-white/40 leading-relaxed italic">「这片星域尚未被记录在你的星图中……」</p>
+                  <p className="text-xs text-white/40 leading-relaxed italic text-pretty">「这片星域尚未被记录在你的星图中……」</p>
                 </>
               )}
             </div>
@@ -452,36 +348,32 @@ export default function StarMapPage() {
 
       {/* 探索事件弹窗 */}
       <Dialog open={!!exploreEvent} onOpenChange={(v) => !v && setExploreEvent(null)}>
-        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md bg-[#0a0a2e] border border-yellow-500/30">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-md bg-[#0a0a2e] border border-amber-500/30">
           <DialogHeader>
-            <DialogTitle className="text-yellow-400 flex items-center gap-2">
-              <Gift className="w-5 h-5" /> 探索发现
+            <DialogTitle className="text-amber-400 flex items-center gap-2">
+              <Sparkles className="w-5 h-5" /> {exploreEvent?.title}
             </DialogTitle>
           </DialogHeader>
           {exploreEvent && (
             <div className="space-y-3">
-              <div className="text-center py-2">
-                <div className="text-5xl mb-2">{exploreEvent.icon}</div>
-                <div className="text-base font-bold text-white">{exploreEvent.title}</div>
-              </div>
-              <p className="text-xs text-white/60 leading-relaxed">{exploreEvent.body}</p>
+              <div className="text-4xl text-center">{exploreEvent.icon}</div>
+              <p className="text-xs text-white/70 leading-relaxed text-pretty">{exploreEvent.body}</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 border border-green-400/30 bg-green-400/5">
-                  <div className="text-[10px] text-green-400/60 uppercase">成功奖励</div>
+                <div className="p-2 bg-green-500/10 border border-green-500/30">
+                  <div className="text-[10px] text-green-400 uppercase">成功奖励</div>
                   <div className="font-bold text-green-400">{exploreEvent.rewardLabel}</div>
                 </div>
-                <div className="p-2 border border-red-400/30 bg-red-400/5">
-                  <div className="text-[10px] text-red-400/60 uppercase">失败惩罚</div>
+                <div className="p-2 bg-red-500/10 border border-red-500/30">
+                  <div className="text-[10px] text-red-400 uppercase">失败代价</div>
                   <div className="font-bold text-red-400">{exploreEvent.penaltyLabel}</div>
                 </div>
               </div>
-              <AlertBar tone="warning">成功率约 {Math.round(exploreEvent.successRate * 100)}% · 结果由命运决定</AlertBar>
+              <div className="text-center text-[11px] text-white/40">成功率 {Math.round(exploreEvent.successRate * 100)}%</div>
             </div>
           )}
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" className="flex-1 btn-mech" onClick={() => setExploreEvent(null)}>放弃</Button>
-            <Button className="flex-1 btn-mech bg-yellow-500/80 text-black hover:bg-yellow-500" onClick={resolveExploreEvent}>
-              <Zap className="w-4 h-4 mr-1" /> 探索！
+          <DialogFooter>
+            <Button className="w-full btn-mech bg-amber-500/80 text-white hover:bg-amber-500" onClick={resolveExploreEvent}>
+              <Sparkles className="w-4 h-4 mr-1" /> 接受挑战
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,44 +384,20 @@ export default function StarMapPage() {
         <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-sm bg-[#0a0a2e] border border-cyan-500/30">
           <DialogHeader>
             <DialogTitle className={exploreResult?.success ? 'text-green-400' : 'text-red-400'}>
-              {exploreResult?.success ? '🎉 探索成功' : '💫 探索失败'}
+              {exploreResult?.success ? '✨ 探索成功！' : '⚠ 探索失败'}
             </DialogTitle>
           </DialogHeader>
           <div className="text-center py-4">
-            <div className="text-5xl mb-3">{exploreResult?.success ? '✨' : '💥'}</div>
-            <div className="text-sm text-white/70">{exploreResult?.ev.title}</div>
-            <div className="text-xs text-white/40 mt-2">
-              {exploreResult?.success ? exploreResult?.ev.rewardLabel : exploreResult?.ev.penaltyLabel}
-            </div>
+            <div className="text-5xl mb-3">{exploreResult?.success ? exploreResult.ev.icon : '💥'}</div>
+            <p className="text-xs text-white/60">
+              {exploreResult?.success ? exploreResult.ev.rewardLabel : exploreResult?.ev.penaltyLabel}
+            </p>
           </div>
           <DialogFooter>
             <Button className="w-full btn-mech bg-cyan-500/80 text-white hover:bg-cyan-500" onClick={() => setExploreResult(null)}>继续探索</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* 曲速航行全屏效果 */}
-      {warping && warpTarget && (
-        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/60">
-          <div className="text-center">
-            <div className="text-6xl mb-4 animate-warp">🚀</div>
-            <div className="text-lg font-bold text-cyan-400 font-mono-num animate-pulse">曲速航行中…</div>
-            <div className="text-xs text-white/40 mt-1">目标：{warpTarget.name}</div>
-          </div>
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-px bg-gradient-to-b from-cyan-400 to-transparent animate-warp-streak"
-              style={{
-                height: `${Math.random() * 200 + 100}px`,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 0.5}s`,
-              }}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
