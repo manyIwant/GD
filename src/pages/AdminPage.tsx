@@ -32,6 +32,7 @@ interface AdminProfile {
 interface AdminOrder {
   id: string;
   user_id: string;
+  username: string;
   plan_name: string;
   origin: string;
   destination: string;
@@ -64,11 +65,15 @@ export default function AdminPage() {
         supabase.rpc('get_all_profiles'),
         supabase.rpc('get_all_orders'),
       ]);
+      if (s.error) throw s.error;
+      if (p.error) throw p.error;
+      if (o.error) throw o.error;
       setStats(s.data as AdminStats);
       setProfiles((p.data || []) as AdminProfile[]);
       setOrders((o.data || []) as AdminOrder[]);
     } catch (e: any) {
-      toast.error(e.message || '加载管理数据失败');
+      const msg = e?.message || '加载管理数据失败';
+      toast.error(msg.includes('无管理员权限') ? '无管理员权限' : '加载管理数据失败：' + msg);
     } finally {
       setLoading(false);
     }
@@ -116,6 +121,7 @@ export default function AdminPage() {
         <Shield className="w-6 h-6 text-laser" />
         <h1 className="text-xl font-bold text-foreground">管理控制台</h1>
         <span className="ml-auto text-[10px] text-laser border border-laser/50 px-2 py-0.5 font-mono-num">ADMIN</span>
+        <Button variant="outline" size="sm" className="btn-mech" onClick={loadData}>刷新</Button>
       </div>
 
       {/* 统计卡片 */}
@@ -172,7 +178,9 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {profiles.map((p) => (
+                  {profiles.length === 0 ? (
+                    <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">暂无航行员数据</td></tr>
+                  ) : profiles.map((p) => (
                     <tr key={p.id} className="border-b border-border/50">
                       <td className="px-3 py-2 text-foreground font-semibold whitespace-nowrap">{p.username}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
@@ -214,6 +222,7 @@ export default function AdminPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
+                    <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">航行员</th>
                     <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">航线</th>
                     <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">目的地</th>
                     <th className="px-3 py-2 text-left text-muted-foreground whitespace-nowrap">状态</th>
@@ -223,11 +232,12 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan={5} className="px-3 py-8 text-center text-muted-foreground">暂无订单</td></tr>
+                    <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">暂无订单</td></tr>
                   ) : orders.map((o) => {
                     const st = ORDER_STATUS[o.status] || { label: o.status, color: 'text-muted-foreground' };
                     return (
                       <tr key={o.id} className="border-b border-border/50">
+                        <td className="px-3 py-2 text-foreground whitespace-nowrap">{o.username || '—'}</td>
                         <td className="px-3 py-2 text-foreground font-semibold whitespace-nowrap">{o.plan_name}</td>
                         <td className="px-3 py-2 text-foreground whitespace-nowrap">{o.destination}</td>
                         <td className={`px-3 py-2 font-bold whitespace-nowrap ${st.color}`}>{st.label}</td>
