@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield } from 'lucide-react';
+import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield, Orbit } from 'lucide-react';
 import { fmtPrice } from '@/data/pricing';
 
 const NAV_ITEMS = [
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/route', label: '航线', icon: MapPin },
   { to: '/orders', label: '订单', icon: Gauge },
   { to: '/monitor', label: '监控', icon: Radio },
+  { to: '/galaxy', label: '银河星图', icon: Orbit },
   { to: '/destinations', label: '目的地', icon: Target },
   { to: '/level', label: '等级成就', icon: Award },
   { to: '/tasks', label: '每日任务', icon: Target },
