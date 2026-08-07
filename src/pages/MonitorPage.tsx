@@ -9,8 +9,9 @@ import { pickCosmicEvent, pickMiniGame } from '@/data/cosmicEvents';
 import type { MiniGameType } from '@/data/cosmicEvents';
 import type { EventChoice } from '@/data/cosmicEvents';
 import type { CosmicEvent } from '@/types/types';
+import { findDestinationInfo } from '@/data/destinations';
 import type { OrderRow } from '@/types/types';
-import { Radio, Snowflake, Eye, Moon, AlertTriangle, Zap, Gift, ShieldAlert } from 'lucide-react';
+import { Radio, Snowflake, Eye, Moon, AlertTriangle, Zap, Gift, ShieldAlert, MapPin, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProgressCalc {
@@ -57,13 +58,13 @@ export default function MonitorPage() {
     if (!order || order.status !== 'flying') { setVTs(null); setHib(false); setHibStart(null); setHibMode(null); setHibRate(1); }
   }, [order, vTs]);
 
-  // 主刷新循环
+  // 主刷新循环（100ms 平滑刷新，确保休眠加速可见）
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(t);
   }, []);
 
-  // 休眠倒计时
+  // 休眠倒计时（到 0 自动进入加速）
   useEffect(() => {
     if (hibCountdown <= 0) return;
     const t = setInterval(() => {
@@ -73,6 +74,14 @@ export default function MonitorPage() {
       });
     }, 1000);
     return () => clearInterval(t);
+  }, [hibCountdown]);
+
+  // 倒计时结束自动启动加速
+  useEffect(() => {
+    if (hibCountdown === 0 && hibMode) {
+      finishHibernation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hibCountdown]);
 
   // 计算进度
@@ -145,7 +154,7 @@ export default function MonitorPage() {
 
   const startHibernation = (mode: 'full' | 'next') => {
     setHibMode(mode);
-    setHibCountdown(10);
+    setHibCountdown(3);
   };
 
   const finishHibernation = async () => {
@@ -339,19 +348,12 @@ export default function MonitorPage() {
             <div className="text-5xl font-bold font-mono-num text-laser text-glow">{hibCountdown}</div>
             <div className="text-xs text-muted-foreground mt-2">进入休眠舱中…</div>
             <div className="h-1 bg-muted mt-3 overflow-hidden">
-              <div className="h-full bg-laser laser-line" style={{ width: `${(10 - hibCountdown) * 10}%` }} />
+              <div className="h-full bg-laser laser-line" style={{ width: `${(3 - hibCountdown) * 33.3}%` }} />
             </div>
           </div>
-          {hibCountdown > 3 && (
-            <DialogFooter>
-              <Button variant="outline" className="w-full btn-mech" onClick={() => setHibCountdown(0)}>取消</Button>
-            </DialogFooter>
-          )}
-          {hibCountdown <= 0 && (
-            <DialogFooter>
-              <Button className="w-full btn-mech bg-laser text-primary-foreground" onClick={finishHibernation}>确认进入休眠</Button>
-            </DialogFooter>
-          )}
+          <DialogFooter>
+            <Button variant="outline" className="w-full btn-mech" onClick={() => setHibCountdown(0)}>取消</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -402,20 +404,56 @@ export default function MonitorPage() {
 
       {/* 抵达弹窗 */}
       <Dialog open={arriveOpen} onOpenChange={setArriveOpen}>
-        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-lg bg-card border-laser">
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-lg bg-card border-laser max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-green-400">🎉 已抵达目的地</DialogTitle>
+            <DialogTitle className="text-green-400 flex items-center gap-2">
+              <Sparkles className="w-5 h-5" /> 已抵达目的地
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="text-center py-3">
+            <div className="text-center py-2">
               <div className="text-5xl mb-2">🌌</div>
               <div className="text-lg font-bold text-foreground">欢迎抵达 {order.destination}</div>
               <div className="text-xs text-muted-foreground mt-1">航程结束·单向航行</div>
             </div>
-            <AlertBar tone="success">✅ 你的航行记录已生成星际明信片，可在飞行日志中查看。</AlertBar>
+
+            {(() => {
+              const info = findDestinationInfo(order.destination);
+              if (!info) {
+                return <AlertBar tone="success">✅ 你的航行记录已生成星际明信片，可在飞行日志中查看。</AlertBar>;
+              }
+              return (
+                <>
+                  <div className="p-3 border border-border bg-muted/30">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin className="w-3 h-3" />目的地简介</div>
+                    <p className="text-xs text-foreground/80 leading-relaxed text-pretty">{info.intro}</p>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1"><Sparkles className="w-3 h-3" />推荐旅游景点</div>
+                    <div className="space-y-2">
+                      {info.spots.map((spot, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 border border-border/60 bg-background/40">
+                          <div className="shrink-0 w-6 h-6 rounded bg-laser/20 text-laser font-bold text-[10px] flex items-center justify-center font-mono-num">{i + 1}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                              {spot.name}
+                              <span className="text-[8px] px-1 py-px rounded bg-laser/20 text-laser">{spot.tag}</span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{spot.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <AlertBar tone="warning">📌 旅行贴士：{info.tip}</AlertBar>
+                </>
+              );
+            })()}
           </div>
           <DialogFooter>
-            <Button className="w-full btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={handleArrive}>查看明信片</Button>
+            <Button className="w-full btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={handleArrive}>查看星际明信片</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
