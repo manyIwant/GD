@@ -82,12 +82,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithUsername = async (username: string, password: string) => {
     try {
       const email = `${username}@miaoda.com`;
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // 检查封禁状态
+      if (data.user) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('banned')
+          .eq('id', data.user.id)
+          .maybeSingle();
+        if (prof?.banned) {
+          await supabase.auth.signOut();
+          throw new Error('该账号已被封禁，请联系管理员');
+        }
+      }
+
       return { error: null };
     } catch (error) {
       return { error: error as Error };
