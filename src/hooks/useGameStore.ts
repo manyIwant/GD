@@ -216,6 +216,27 @@ export function useGameStore() {
     await loadAll();
   }, [user, refreshProfile, loadAll]);
 
+  // 保存个人飞船配置
+  const saveShipConfig = useCallback(async (config: Record<string, string>) => {
+    if (!user) return;
+    await api.saveShipConfig(user.id, config);
+    await refreshProfile();
+  }, [user, refreshProfile]);
+
+  // 添加纪念品
+  const addMemento = useCallback(async (name: string, desc: string, emoji: string) => {
+    if (!user) return;
+    await api.addMemento(user.id, name, desc, emoji);
+    await refreshProfile();
+  }, [user, refreshProfile]);
+
+  // 解锁探索成就
+  const unlockExploreAchievement = useCallback(async (name: string) => {
+    if (!user) return;
+    await api.unlockExploreAchievement(user.id, name);
+    await refreshProfile();
+  }, [user, refreshProfile]);
+
   // 选择飞船
   const selectShip = useCallback(async (code: string) => {
     if (!user) return;
@@ -246,7 +267,7 @@ export function useGameStore() {
     user, profile, orders, achievements, dailyTasks, flightLogs, unlockedShips,
     loading, activeOrderId, setActiveOrderId,
     loadAll, placeOrder, boardOrder, cancelOrder, completeFlight,
-    doSignIn, claimTask, recharge, addXp, deductBalance, selectShip, unlockShipByCode, incProgress, checkTrisolaris,
+    doSignIn, claimTask, recharge, addXp, deductBalance, saveShipConfig, addMemento, unlockExploreAchievement, selectShip, unlockShipByCode, incProgress, checkTrisolaris,
   };
 }
 
