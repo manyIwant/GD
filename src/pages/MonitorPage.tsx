@@ -7,9 +7,10 @@ import { HudPanel, DataItem, LocationHero, EmptyState, AlertBar } from '@/compon
 import MiniGame from '@/components/game/MiniGame';
 import { pickCosmicEvent, pickMiniGame } from '@/data/cosmicEvents';
 import type { MiniGameType } from '@/data/cosmicEvents';
+import type { EventChoice } from '@/data/cosmicEvents';
 import type { CosmicEvent } from '@/types/types';
 import type { OrderRow } from '@/types/types';
-import { Radio, Snowflake, Eye, Moon, AlertTriangle, Zap } from 'lucide-react';
+import { Radio, Snowflake, Eye, Moon, AlertTriangle, Zap, Gift, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProgressCalc {
@@ -32,8 +33,11 @@ export default function MonitorPage() {
   const [now, setNow] = useState(Date.now());
   const [hib, setHib] = useState(false);
   const [hibStart, setHibStart] = useState<number | null>(null);
+  const [hibRate, setHibRate] = useState(1); // 休眠加速倍率
   const [hibCountdown, setHibCountdown] = useState(0);
   const [hibMode, setHibMode] = useState<'full' | 'next' | null>(null);
+  const [hibBaseElapsed, setHibBaseElapsed] = useState(0); // 进入休眠时已积累的进度
+  const [hibTargetProgress, setHibTargetProgress] = useState(100); // 浅度休眠目标进度
 
   // 宇宙事件
   const [eventOpen, setEventOpen] = useState(false);
@@ -43,13 +47,14 @@ export default function MonitorPage() {
   // 小游戏
   const [miniGameOpen, setMiniGameOpen] = useState(false);
   const [miniGameType, setMiniGameType] = useState<MiniGameType>('decode');
+  const [pendingChoice, setPendingChoice] = useState<EventChoice | null>(null);
 
   // 抵达弹窗
   const [arriveOpen, setArriveOpen] = useState(false);
 
   useEffect(() => {
     if (order?.status === 'flying' && vTs === null) setVTs(Date.now());
-    if (!order || order.status !== 'flying') { setVTs(null); setHib(false); setHibStart(null); setHibMode(null); }
+    if (!order || order.status !== 'flying') { setVTs(null); setHib(false); setHibStart(null); setHibMode(null); setHibRate(1); }
   }, [order, vTs]);
 
   // 主刷新循环
@@ -74,24 +79,34 @@ export default function MonitorPage() {
   const calc: ProgressCalc | null = useMemo(() => {
     if (!order || order.status !== 'flying' || vTs === null) return null;
     const totalMs = new Date(order.arrival_time).getTime() - new Date(order.departure_time).getTime();
-    let displayElapsed = Date.now() - vTs;
-    if (hib && hibStart) {
-      // 休眠加速：每秒相当于5分钟真实时间
-      const hibElapsed = (Date.now() - hibStart) * 300;
-      displayElapsed = hibElapsed;
+    let displayElapsed: number;
+    if (hib && hibStart !== null) {
+      // 休眠加速：在进入休眠前的进度基础上，按倍率快速推进
+      displayElapsed = hibBaseElapsed + (Date.now() - hibStart) * hibRate;
+    } else {
+      displayElapsed = Date.now() - vTs;
     }
     const progress = totalMs > 0 ? Math.min(100, (displayElapsed / totalMs) * 100) : 0;
     const remainingMs = Math.max(0, totalMs - displayElapsed);
     const wps = order.waypoints || [];
     const wpIndex = Math.min(Math.floor(progress / 100 * Math.max(wps.length - 1, 1)), wps.length - 1);
     return { totalMs, displayElapsed, progress, remainingMs, wps, wpIndex };
-  }, [order, vTs, hib, hibStart, now]);
+  }, [order, vTs, hib, hibStart, hibRate, hibBaseElapsed, now]);
 
   // 抵达检测 + 宇宙事件
   useEffect(() => {
     if (!calc || !order) return;
     if (calc.progress >= 100 && order.status === 'flying') {
       setArriveOpen(true);
+      return;
+    }
+    // 浅度休眠到达目标站点 → 自动唤醒
+    if (hib && hibMode === 'next' && calc.progress >= hibTargetProgress - 0.01) {
+      setHib(false);
+      setHibStart(null);
+      setHibRate(1);
+      setHibMode(null);
+      toast.info('🌙 已抵达休眠目标站，自动唤醒');
       return;
     }
     // 宇宙事件
@@ -103,7 +118,7 @@ export default function MonitorPage() {
         setEventOpen(true);
       }
     }
-  }, [calc?.progress, order, hib]);
+  }, [calc?.progress, order, hib, hibMode, hibTargetProgress]);
 
   if (!order || order.status !== 'flying') {
     return (
@@ -135,14 +150,29 @@ export default function MonitorPage() {
 
   const finishHibernation = async () => {
     setHibCountdown(0);
+    if (!calc || !order) return;
+    const currentElapsed = calc.displayElapsed;
     if (hibMode === 'full') {
-      setHib(true);
+      // 深度休眠：约10秒加速完成航行
+      const remaining = calc.totalMs - currentElapsed;
+      const rate = Math.max(remaining / 10000, 1);
+      setHibBaseElapsed(currentElapsed);
+      setHibRate(rate);
       setHibStart(Date.now());
-      toast.success('🧊 深度休眠启动·直达目的地');
+      setHib(true);
+      toast.success('🧊 深度休眠启动·时间加速中');
     } else {
-      // 浅度休眠：直接快进到下一站
-      toast.success('🌙 浅度休眠·航行至下一站');
-      setVTs(Date.now() - (calc.wpIndex + 1) / Math.max(wps.length - 1, 1) * calc.totalMs);
+      // 浅度休眠：直接跳到下一站（无中转则直达目的地）
+      const wps = order.waypoints || [];
+      const targetProgress = wps.length > 1 ? Math.min(100, ((calc.wpIndex + 1) / Math.max(wps.length - 1, 1)) * 100) : 100;
+      setHibTargetProgress(targetProgress);
+      const targetElapsed = (targetProgress / 100) * calc.totalMs;
+      setHibBaseElapsed(targetElapsed);
+      setHibRate(0);
+      setHibStart(Date.now());
+      setHib(true);
+      const nextName = wps.length > 1 ? wps[Math.min(calc.wpIndex + 1, wps.length - 1)].n : order.destination;
+      toast.success(`🌙 浅度休眠·航行至 ${nextName}`);
     }
   };
 
@@ -150,6 +180,49 @@ export default function MonitorPage() {
     setArriveOpen(false);
     await completeFlight(order.id);
     navigate('/logs');
+  };
+
+  // 处理宇宙事件选项
+  const chooseEvent = (choice: EventChoice) => {
+    setEventOpen(false);
+    if (choice.type === 'game') {
+      setPendingChoice(choice);
+      const mg = pickMiniGame();
+      setMiniGameType(mg.type);
+      setMiniGameOpen(true);
+    } else if (choice.type === 'risk') {
+      // 风险选项：50% 概率成功
+      const success = Math.random() < 0.5;
+      applyEventResult(success, choice);
+    } else {
+      // 直接奖励
+      applyEventResult(true, choice);
+    }
+  };
+
+  const applyEventResult = (success: boolean, choice: EventChoice) => {
+    if (success) {
+      const xp = choice.rewardXp || 0;
+      const bal = choice.rewardBalance || 0;
+      if (xp > 0) store.addXp(xp);
+      if (bal > 0) store.recharge(bal);
+      toast.success(`✨ ${choice.label}成功`, { description: `+${xp} XP${bal > 0 ? ` · +${bal} 信用点` : ''}` });
+    } else {
+      const risk = choice.riskBalance || 0;
+      if (risk > 0) store.deductBalance(risk);
+      toast.error(`⚠ ${choice.label}失败`, { description: risk > 0 ? `损失 ${risk} 信用点` : '无损失' });
+    }
+  };
+
+  const handleMiniGameClose = (success: boolean, _xp: number, balance: number) => {
+    setMiniGameOpen(false);
+    const choice = pendingChoice;
+    setPendingChoice(null);
+    if (!choice) return;
+    applyEventResult(success, choice);
+    if (balance !== 0) {
+      // balance 已在 applyEventResult 中通过 reward/risk 处理，这里仅做提示兜底
+    }
   };
 
   return (
@@ -241,15 +314,15 @@ export default function MonitorPage() {
       {hib && (
         <HudPanel className="mt-4">
           <div className="p-5 text-center">
-            <div className="text-5xl mb-2">🧊</div>
-            <div className="text-base font-bold text-foreground">深度休眠中</div>
-            <div className="text-xs text-muted-foreground mt-1">生命维持正常</div>
+            <div className="text-5xl mb-2">{hibMode === 'next' ? '🌙' : '🧊'}</div>
+            <div className="text-base font-bold text-foreground">{hibMode === 'next' ? '浅度休眠中' : '深度休眠中'}</div>
+            <div className="text-xs text-muted-foreground mt-1">{hibMode === 'next' ? '时间已冻结·等待抵达目标站' : '时间加速中·约10秒抵达'}</div>
             <div className="flex flex-wrap justify-center gap-3 mt-3 text-[11px] text-muted-foreground">
               <span>🧬 基因锁:激活</span>
               <span>💉 营养液:循环</span>
               <span>🌡 体温:36.2°C</span>
             </div>
-            <Button variant="outline" size="sm" className="mt-3 btn-mech text-yellow-400" onClick={() => { setHib(false); setHibStart(null); toast.warning('⚠ 紧急唤醒完成'); }}>
+            <Button variant="outline" size="sm" className="mt-3 btn-mech text-yellow-400" onClick={() => { setHib(false); setHibStart(null); setHibRate(1); setHibMode(null); toast.warning('⚠ 紧急唤醒完成'); }}>
               ⚠ 紧急唤醒
             </Button>
           </div>
@@ -293,13 +366,26 @@ export default function MonitorPage() {
           <div className="space-y-3">
             <div className="text-base font-bold text-foreground">{currentEvent?.title}</div>
             <p className="text-xs text-muted-foreground leading-relaxed">{currentEvent?.body}</p>
-            <AlertBar tone="warning">是否尝试交互？完成小游戏可获得 +50 XP 奖励。</AlertBar>
+            <div className="space-y-2">
+              {(currentEvent?.choices || []).map((choice, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => chooseEvent(choice)}
+                  className="w-full text-left p-3 border border-border bg-muted/30 hover:border-laser hover:bg-muted/50 btn-mech transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {choice.type === 'game' && <Zap className="w-3.5 h-3.5 text-laser shrink-0" />}
+                    {choice.type === 'reward' && <Gift className="w-3.5 h-3.5 text-green-400 shrink-0" />}
+                    {choice.type === 'risk' && <ShieldAlert className="w-3.5 h-3.5 text-yellow-400 shrink-0" />}
+                    <span className="text-sm font-bold text-foreground">{choice.label}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">{choice.desc}</div>
+                </button>
+              ))}
+            </div>
           </div>
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" className="flex-1 btn-mech" onClick={() => setEventOpen(false)}>忽略</Button>
-            <Button className="flex-1 btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={() => { setEventOpen(false); const mg = pickMiniGame(); setMiniGameType(mg.type); setMiniGameOpen(true); }}>
-              <Zap className="w-4 h-4 mr-1" /> 尝试交互
-            </Button>
+          <DialogFooter>
+            <Button variant="outline" className="w-full btn-mech" onClick={() => setEventOpen(false)}>忽略事件</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -308,12 +394,10 @@ export default function MonitorPage() {
       <MiniGame
         open={miniGameOpen}
         type={miniGameType}
-        onClose={(success, xp) => {
-          setMiniGameOpen(false);
-          if (success && xp > 0) {
-            toast.success(`🎮 小游戏胜利！+${xp} XP`);
-          }
-        }}
+        rewardXp={pendingChoice?.rewardXp}
+        rewardBalance={pendingChoice?.rewardBalance}
+        riskBalance={pendingChoice?.riskBalance}
+        onClose={handleMiniGameClose}
       />
 
       {/* 抵达弹窗 */}
