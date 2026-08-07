@@ -21,6 +21,9 @@ export interface Profile {
   selected_ship: string;
   last_sign_in_date: string | null;
   sign_in_streak: number;
+  ship_config: Record<string, string> | null;
+  mementos: Array<{ name: string; desc: string; emoji: string }>;
+  explore_achievements: string[];
   created_at: string;
 }
 
