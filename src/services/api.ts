@@ -80,6 +80,24 @@ export async function deductBalance(userId: string, amount: number): Promise<voi
   await updateBalance(userId, -amount);
 }
 
+// 保存个人飞船配置
+export async function saveShipConfig(userId: string, config: Record<string, string>): Promise<void> {
+  const { error } = await supabase.rpc('save_ship_config', { p_config: config });
+  if (error) throw error;
+}
+
+// 添加纪念品
+export async function addMemento(userId: string, name: string, desc: string, emoji: string): Promise<void> {
+  const { error } = await supabase.rpc('add_memento', { p_name: name, p_desc: desc, p_emoji: emoji });
+  if (error) throw error;
+}
+
+// 解锁探索成就
+export async function unlockExploreAchievement(userId: string, name: string): Promise<void> {
+  const { error } = await supabase.rpc('unlock_explore_achievement', { p_name: name });
+  if (error) throw error;
+}
+
 // ===== Orders =====
 export async function fetchOrders(userId: string): Promise<OrderRow[]> {
   const { data, error } = await supabase
