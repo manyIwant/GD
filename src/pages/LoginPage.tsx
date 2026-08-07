@@ -38,6 +38,8 @@ export default function LoginPage() {
           friendly = '该航行员代号已注册，请直接登录';
         } else if (msg.includes('Password should be at least')) {
           friendly = '密码至少 6 位';
+        } else if (msg.includes('已被封禁')) {
+          friendly = '该账号已被封禁，请联系管理员';
         }
         toast.error(friendly);
       } else {
