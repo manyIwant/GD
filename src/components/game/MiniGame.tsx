@@ -7,11 +7,14 @@ import type { MiniGameType } from '@/data/cosmicEvents';
 interface Props {
   open: boolean;
   type: MiniGameType;
-  onClose: (success: boolean, xp: number) => void;
+  rewardXp?: number;
+  rewardBalance?: number;
+  riskBalance?: number;
+  onClose: (success: boolean, xp: number, balance: number) => void;
 }
 
 // 宇宙事件小游戏：解码 / 躲避 / 序列
-export default function MiniGame({ open, type, onClose }: Props) {
+export default function MiniGame({ open, type, rewardXp = 50, rewardBalance = 0, riskBalance = 0, onClose }: Props) {
   const [timeLeft, setTimeLeft] = useState(15);
   const [phase, setPhase] = useState<'intro' | 'play' | 'win' | 'lose'>('intro');
 
@@ -22,13 +25,14 @@ export default function MiniGame({ open, type, onClose }: Props) {
   const start = () => setPhase('play');
 
   const handleResult = useCallback((success: boolean) => {
-    const xp = success ? 50 : 0;
+    const xp = success ? rewardXp : 0;
+    const bal = success ? rewardBalance : -riskBalance;
     setPhase(success ? 'win' : 'lose');
-    setTimeout(() => onClose(success, xp), 1200);
-  }, [onClose]);
+    setTimeout(() => onClose(success, xp, bal), 1200);
+  }, [onClose, rewardXp, rewardBalance, riskBalance]);
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose(false, 0)}>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose(false, 0, 0)}>
       <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-lg bg-card border-laser">
         <DialogHeader>
           <DialogTitle className="text-laser flex items-center gap-2">
@@ -55,14 +59,14 @@ export default function MiniGame({ open, type, onClose }: Props) {
           <div className="text-center py-8">
             <div className="text-5xl mb-3">🎉</div>
             <div className="text-lg font-bold text-green-400">挑战成功！</div>
-            <div className="text-xs text-muted-foreground mt-1">获得 +50 XP</div>
+            <div className="text-xs text-muted-foreground mt-1">获得 +{rewardXp} XP{rewardBalance > 0 ? ` · +${rewardBalance} 信用点` : ''}</div>
           </div>
         )}
         {phase === 'lose' && (
           <div className="text-center py-8">
             <div className="text-5xl mb-3">💫</div>
             <div className="text-lg font-bold text-yellow-400">挑战失败</div>
-            <div className="text-xs text-muted-foreground mt-1">航行继续，无惩罚</div>
+            <div className="text-xs text-muted-foreground mt-1">{riskBalance > 0 ? `损失 ${riskBalance} 信用点` : '航行继续，无惩罚'}</div>
           </div>
         )}
       </DialogContent>
