@@ -129,6 +129,8 @@ export async function unlockAchievement(code: string) {
 // ===== Daily Tasks =====
 export async function fetchDailyTasks(userId: string): Promise<DailyTaskRow[]> {
   const today = new Date().toISOString().slice(0, 10);
+  // 确保当天任务已生成（新用户当天也能看到任务）
+  await supabase.rpc('ensure_daily_tasks');
   const { data, error } = await supabase
     .from('daily_tasks')
     .select('*')
