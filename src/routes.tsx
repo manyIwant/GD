@@ -13,6 +13,7 @@ import ShipsPage from './pages/ShipsPage';
 import LogsPage from './pages/LogsPage';
 import CommPage from './pages/CommPage';
 import AdminPage from './pages/AdminPage';
+import StarMapPage from './pages/StarMapPage';
 
 export interface RouteConfig {
   name: string;
@@ -36,5 +37,6 @@ export const routes: RouteConfig[] = [
   { name: '飞船', path: '/ships', element: <ShipsPage /> },
   { name: '飞行日志', path: '/logs', element: <LogsPage /> },
   { name: '通讯', path: '/comm', element: <CommPage /> },
+  { name: '银河星图', path: '/galaxy', element: <StarMapPage /> },
   { name: '管理控制台', path: '/admin', element: <AdminPage /> },
 ];
