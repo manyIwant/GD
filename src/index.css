@@ -1,0 +1,163 @@
+/* stylelint-disable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'ZCOOL KuHei';
+  src: url('https://resource-static.bj.bcebos.com/fonts-skill/ZCOOLKuHei_Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Alibaba PuHuiTi';
+  src: url('https://resource-static.bj.bcebos.com/fonts-skill/AlibabaPuHuiTi_Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* HUD工业风 — 曜石黑底 / 霓虹橙激光线 / 仪表盘刻度 */
+@layer base {
+  :root {
+    --radius: 0px;
+    --background: 0 0% 1%;
+    --foreground: 0 0% 88%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 88%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 88%;
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 88%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 53%;
+    --accent: 16 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 14%;
+    --ring: 16 100% 50%;
+    --chart-1: 16 100% 50%;
+    --chart-2: 200 80% 55%;
+    --chart-3: 140 60% 50%;
+    --chart-4: 45 90% 55%;
+    --chart-5: 280 65% 60%;
+    --sidebar-background: 0 0% 2.5%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 16 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 16 100% 50%;
+    --success: 142 60% 50%;
+    --warning: 38 92% 55%;
+    --info: 200 80% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Alibaba PuHuiTi', system-ui, sans-serif;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(255,69,0,0.06), transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(80,80,160,0.05), transparent 50%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'ZCOOL KuHei', 'Alibaba PuHuiTi', system-ui, sans-serif;
+  }
+  /* 滚动条 */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(0 0% 22%) transparent;
+  }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: hsl(0 0% 20%); border-radius: 0; }
+  *::-webkit-scrollbar-thumb:hover { background: hsl(16 100% 40%); }
+}
+
+@layer components {
+  /* 仪表盘刻度线 — HUD 签名视觉 */
+  .hud-tickline {
+    background-image: repeating-linear-gradient(90deg, hsl(0 0% 18%) 0, hsl(0 0% 18%) 1px, transparent 1px, transparent 12px);
+    height: 2px;
+  }
+  .hud-grid {
+    background-image:
+      linear-gradient(hsl(0 0% 14% / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 14% / 0.5) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  /* 激光线呼吸 */
+  .laser-line {
+    background: linear-gradient(90deg, transparent, hsl(16 100% 50%), transparent);
+    animation: laser-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes laser-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  /* 数据出现填充 */
+  .data-fill {
+    background: linear-gradient(90deg, hsl(16 100% 50%) var(--p, 0%), hsl(0 0% 12%) var(--p, 0%));
+    transition: --p 0.6s ease, background 0.6s ease;
+  }
+  /* 选中态霓虹边框 */
+  .neon-active {
+    border-color: hsl(16 100% 50%) !important;
+    box-shadow: inset 0 0 0 1px hsl(16 100% 50% / 0.4), 0 0 12px hsl(16 100% 50% / 0.25);
+  }
+  /* 机械按下反馈 */
+  .btn-mech {
+    transition: transform 0.08s ease, border-color 0.12s ease, background 0.12s ease;
+  }
+  .btn-mech:active { transform: translateY(1px) scale(0.985); }
+  /* 星云背景球 */
+  .nebula-orb {
+    background: radial-gradient(circle at 35% 35%, hsl(16 100% 50% / 0.25), transparent 60%),
+                radial-gradient(circle at 70% 70%, hsl(280 50% 30% / 0.2), transparent 55%);
+    filter: blur(8px);
+  }
+  /* 目的地渐变背景 */
+  .bg-earth { background: radial-gradient(circle at 50% 60%, #1e3a5f, #0a1622 70%); }
+  .bg-moon { background: radial-gradient(circle at 40% 40%, #6b7280, #1f2937 70%); }
+  .bg-mars { background: radial-gradient(circle at 45% 55%, #b45309, #451a03 70%); }
+  .bg-jump { background: radial-gradient(circle at 50% 50%, #6366f1, #1e1b4b 70%); }
+  .bg-centauri { background: radial-gradient(circle at 50% 45%, #f59e0b, #78350f 70%); }
+  .bg-andromeda { background: radial-gradient(circle at 50% 50%, #a855f7, #2e1065 70%); }
+  .bg-sirius { background: radial-gradient(circle at 50% 40%, #38bdf8, #0c4a6e 70%); }
+  .bg-barnard { background: radial-gradient(circle at 50% 50%, #dc2626, #450a0a 70%); }
+  .bg-ross { background: radial-gradient(circle at 50% 45%, #fb7185, #4c0519 70%); }
+  .bg-gliese { background: radial-gradient(circle at 50% 50%, #34d399, #064e3b 70%); }
+  .bg-ceres { background: radial-gradient(circle at 50% 50%, #a8a29e, #1c1917 70%); }
+  .bg-omphalos { background: radial-gradient(circle at 50% 60%, #ca8a04, #422006 70%); }
+  .bg-proxima { background: radial-gradient(circle at 50% 45%, #ef4444, #450a0a 70%); }
+  .bg-b621 { background: radial-gradient(circle at 50% 50%, #fda4af, #4a044e 70%); }
+  /* 粒状噪点 */
+  .grain::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: 0.04; pointer-events: none; mix-blend-mode: overlay;
+  }
+  /* 数字等宽 */
+  .font-mono-num { font-variant-numeric: tabular-nums; font-family: 'Alibaba PuHuiTi', ui-monospace, monospace; }
+}
+
+@layer utilities {
+  .text-glow { text-shadow: 0 0 8px hsl(16 100% 50% / 0.6); }
+  .border-laser { border-color: hsl(16 100% 50%); }
+  .bg-laser { background-color: hsl(16 100% 50%); }
+  .text-laser { color: hsl(16 100% 50%); }
+}
