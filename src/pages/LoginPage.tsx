@@ -30,7 +30,16 @@ export default function LoginPage() {
       const fn = mode === 'login' ? signInWithUsername : signUpWithUsername;
       const { error } = await fn(username.trim(), password);
       if (error) {
-        toast.error(error.message || (mode === 'login' ? '登录失败' : '注册失败'));
+        const msg = error.message || '';
+        let friendly = mode === 'login' ? '登录失败' : '注册失败';
+        if (msg.includes('Invalid login credentials')) {
+          friendly = '用户名或密码错误，请重试';
+        } else if (msg.includes('already registered') || msg.includes('already been registered')) {
+          friendly = '该航行员代号已注册，请直接登录';
+        } else if (msg.includes('Password should be at least')) {
+          friendly = '密码至少 6 位';
+        }
+        toast.error(friendly);
       } else {
         if (mode === 'register') {
           toast.success('注册成功，欢迎加入星际客运', { description: '正在进入…' });
