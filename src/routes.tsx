@@ -14,6 +14,8 @@ import LogsPage from './pages/LogsPage';
 import CommPage from './pages/CommPage';
 import AdminPage from './pages/AdminPage';
 import StarMapPage from './pages/StarMapPage';
+import ShipDesignerPage from './pages/ShipDesignerPage';
+import MementosPage from './pages/MementosPage';
 
 export interface RouteConfig {
   name: string;
@@ -38,5 +40,7 @@ export const routes: RouteConfig[] = [
   { name: '飞行日志', path: '/logs', element: <LogsPage /> },
   { name: '通讯', path: '/comm', element: <CommPage /> },
   { name: '银河星图', path: '/galaxy', element: <StarMapPage /> },
+  { name: '飞船设计', path: '/ship-designer', element: <ShipDesignerPage /> },
+  { name: '探索纪念品', path: '/mementos', element: <MementosPage /> },
   { name: '管理控制台', path: '/admin', element: <AdminPage /> },
 ];
