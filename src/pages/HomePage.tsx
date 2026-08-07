@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { getLevelByXp, getNextLevel, getLevelProgress } from '@/data/levels';
 import { getShip } from '@/data/ships';
 import { fmtPrice, fmtLY } from '@/data/pricing';
 import { CANDIDATES, buildWP } from '@/data/waypoints';
-import { Search, Plus, MapPin, Trophy, Target, Ship, BookOpen, Zap, ChevronRight, Orbit, Wrench } from 'lucide-react';
+import { Search, Plus, MapPin, Trophy, Target, Ship, BookOpen, Zap, ChevronRight, Orbit, Wrench, Radio } from 'lucide-react';
 
 export default function HomePage() {
   const { profile } = useAuth();
@@ -18,6 +18,37 @@ export default function HomePage() {
   const [transits, setTransits] = useState<string[]>(['']);
   const [showCandidates, setShowCandidates] = useState(false);
   const [focusField, setFocusField] = useState<'origin' | 'dest' | 'transit' | null>(null);
+
+  // 星历时钟（每秒更新）
+  const [stardate, setStardate] = useState('');
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date();
+      const sd = `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')} · ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}:${String(d.getUTCSeconds()).padStart(2, '0')} UTC`;
+      setStardate(sd);
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // 每日宇宙格言（按日期稳定）
+  const quotes = useMemo(
+    () => [
+      '「星辰大海，始于足下。」—— 致每一位仰望星空的航行员',
+      '「我们都是星尘的孩子，终将回归星辰。」—— 卡尔·萨根',
+      '「宇宙最不可理解之处，在于它竟然可以被理解。」—— 爱因斯坦',
+      '「在浩瀚星海面前，渺小也是一种浪漫。」',
+      '「每一颗星星，都是一个未被讲述的故事。」',
+      '「跨越光年的旅程，从一次勇敢的点击开始。」',
+    ],
+    []
+  );
+  const dailyQuote = useMemo(() => {
+    const d = new Date();
+    const idx = (d.getUTCFullYear() * 1000 + d.getUTCMonth() * 50 + d.getUTCDate()) % quotes.length;
+    return quotes[idx];
+  }, [quotes]);
 
   const level = useMemo(() => getLevelByXp(profile?.xp || 0), [profile?.xp]);
   const nextLevel = useMemo(() => getNextLevel(profile?.xp || 0), [profile?.xp]);
@@ -58,6 +89,18 @@ export default function HomePage() {
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-5xl mx-auto">
+      {/* 星历与宇宙格言 */}
+      <div className="mb-5 flex flex-col gap-2">
+        <div className="flex items-center gap-2 text-[10px] md:text-xs font-mono-num">
+          <Radio className="w-3.5 h-3.5 text-laser animate-pulse" />
+          <span className="text-laser">STARDATE</span>
+          <span className="text-muted-foreground">{stardate}</span>
+        </div>
+        <div className="text-[11px] md:text-xs text-muted-foreground italic border-l-2 border-laser/40 pl-2 text-pretty">
+          {dailyQuote}
+        </div>
+      </div>
+
       {/* 等级面板 */}
       <HudPanel title="航行员档案" className="mb-5">
         <div className="p-4">
