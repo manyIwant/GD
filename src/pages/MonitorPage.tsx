@@ -129,6 +129,18 @@ export default function MonitorPage() {
     }
   }, [calc?.progress, order, hib, hibMode, hibTargetProgress]);
 
+  // 航行日志（随进度变化的趣味旁白）
+  const logLines = useMemo(
+    () => [
+      '飞船引擎预热完毕，曲速场正在稳定。窗外星辰拉成细长的光带。',
+      '已进入稳定巡航，舱内重力维持在 0.98g，一切正常。',
+      '途经一片淡紫色的星云，传感器记录到微弱的引力涟漪。',
+      '航程过半，舷窗外掠过一颗孤独的白矮星，光芒冷冽而宁静。',
+      '接近目的地星域，导航系统开始锁定降落坐标。',
+    ],
+    []
+  );
+
   if (!order || order.status !== 'flying') {
     return (
       <div className="px-4 md:px-8 py-6 max-w-3xl mx-auto">
@@ -151,6 +163,10 @@ export default function MonitorPage() {
   const m = Math.floor((remainingMs % 3600000) / 60000);
   const s = Math.floor((remainingMs % 60000) / 1000);
   const speedC = (0.72 + progress / 100 * 0.2).toFixed(2);
+
+  // 航行日志索引（随进度变化）
+  const logIdx = Math.min(Math.floor(progress / 20), logLines.length - 1);
+  const logLine = logLines[logIdx];
 
   const startHibernation = (mode: 'full' | 'next') => {
     setHibMode(mode);
@@ -282,6 +298,12 @@ export default function MonitorPage() {
 
       {/* 当前位置 */}
       <LocationHero bg={cwp.bg} name={`📍 ${cwp.n}`} desc={cwp.d} />
+
+      {/* 航行日志 */}
+      <div className="mb-4 border border-laser/30 bg-black/40 px-3 py-2 flex items-start gap-2">
+        <span className="text-[10px] text-laser font-mono-num shrink-0 mt-0.5">LOG</span>
+        <p className="text-[11px] md:text-xs text-muted-foreground italic leading-relaxed text-pretty">{logLine}</p>
+      </div>
 
       <AlertBar tone="info" >
         <div className="flex items-center justify-between">
