@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+output
+*.local
+package-lock.json
+playwright-report
+test-results
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+package.json.[0-9]*
+.sync
+history/*.json
+.vite_cache
+/.skills
+/tasks
+.native-wind-cache
+.vite
+
+# 构建产物 / 打包输出，不应纳入版本控制
+release/
+android/
+electron/build/
+electron/out/
+*.apk
+*.dmg
+*.exe
+*.app
