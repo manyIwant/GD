@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Users, Gauge, Star, Radio, Ban, ShieldCheck, Radar, AlertTriangle, Lock, Unlock, Eye, Circle, Plane, Compass, Sparkles, Award, Rocket } from 'lucide-react';
 import { fmtPrice, fmtLY } from '@/data/pricing';
+import { ACHIEVEMENTS } from '@/data/achievements';
 import { toast } from 'sonner';
 import { getAdminUserDetail } from '@/services/api';
 import type { RiskItem, AdminUserDetail, PublicOrderItem, PublicAchievementItem } from '@/types/types';
@@ -504,12 +505,15 @@ export default function AdminPage() {
                     <Award className="w-3.5 h-3.5 text-laser" /> 已获得成就
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {detail.achievements.map((a: PublicAchievementItem) => (
-                      <div key={a.name} className="p-2 border border-border bg-muted/10">
-                        <div className="text-xs font-semibold text-foreground truncate">{a.name}</div>
-                        <div className="text-[10px] text-muted-foreground truncate">{a.description}</div>
-                      </div>
-                    ))}
+                    {detail.achievements.map((a: PublicAchievementItem) => {
+                      const def = ACHIEVEMENTS[a.code];
+                      return (
+                        <div key={a.code} className="p-2 border border-border bg-muted/10">
+                          <div className="text-xs font-semibold text-foreground truncate">{def?.name || a.code}</div>
+                          <div className="text-[10px] text-muted-foreground truncate">{def?.desc || '神秘成就'}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

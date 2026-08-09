@@ -47,8 +47,7 @@ export interface PublicOrderItem {
 }
 
 export interface PublicAchievementItem {
-  name: string;
-  description: string;
+  code: string;
   unlocked_at: string;
 }
 
