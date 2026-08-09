@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { Zap, Wallet, Check } from 'lucide-react';
 
 const PRESETS = [100000, 500000, 1000000, 5000000, 10000000, 50000000];
+const EXPLORE_PRESETS = [1000, 5000, 10000, 50000, 100000];
+const EXPLORE_MAX = 100000;
 
 // 虚拟支付方式（还原现实体验·不侵权命名）
 interface PayMethod {
@@ -77,12 +79,18 @@ const PAY_METHODS: PayMethod[] = [
 export default function RechargeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const store = useGameStore();
   const { profile } = store;
+  const isExplore = profile?.interest === 'explore';
+  const presets = isExplore ? EXPLORE_PRESETS : PRESETS;
   const [amount, setAmount] = useState(1000000);
   const [method, setMethod] = useState('weifu');
   const [loading, setLoading] = useState(false);
 
   const handleRecharge = async () => {
     if (amount <= 0) { toast.error('请输入有效金额'); return; }
+    if (isExplore && amount > EXPLORE_MAX) {
+      toast.error(`探索型航行员单次充值上限为 ${fmtPrice(EXPLORE_MAX)} 信用点`);
+      return;
+    }
     setLoading(true);
     try {
       await store.recharge(amount);
@@ -111,7 +119,7 @@ export default function RechargeDialog({ open, onOpenChange }: { open: boolean; 
           <div>
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">快速选择</div>
             <div className="grid grid-cols-3 gap-2">
-              {PRESETS.map((v) => (
+              {presets.map((v) => (
                 <button
                   key={v}
                   onClick={() => setAmount(v)}
@@ -166,6 +174,9 @@ export default function RechargeDialog({ open, onOpenChange }: { open: boolean; 
 
           <div className="text-[10px] text-muted-foreground leading-relaxed border border-dashed border-border p-2">
             ⚠ 信用点为虚拟货币，仅用于本应用内购票与消费。充值后不可提现、不可转让。
+            {isExplore && (
+              <span className="block mt-1 text-amber-400">探索型航行员单次充值上限为 {fmtPrice(EXPLORE_MAX)} 信用点。</span>
+            )}
           </div>
         </div>
         <DialogFooter>

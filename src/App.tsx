@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layouts/AppLayout';
 import Starfield from '@/components/common/Starfield';
 import BannedPage from '@/pages/BannedPage';
+import OnboardingSurvey from '@/components/common/OnboardingSurvey';
 
 import { routes } from './routes';
 
@@ -69,6 +70,7 @@ function AppShell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>
+      <OnboardingSurvey />
     </RequireAuth>
   );
 }

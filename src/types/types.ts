@@ -32,6 +32,7 @@ export interface Profile {
   appeal_chances: number;
   appeal_count: number;
   is_private: boolean;
+  interest: 'flight' | 'explore' | 'both' | null;
 }
 
 export interface PublicProfile {

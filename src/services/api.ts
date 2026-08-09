@@ -309,3 +309,9 @@ export async function banUserWithReason(userId: string, reason: string): Promise
   const { error } = await supabase.rpc('ban_user', { p_user_id: userId, p_reason: reason });
   if (error) throw error;
 }
+
+// ===== 兴趣画像 =====
+export async function setInterest(userId: string, interest: 'flight' | 'explore' | 'both'): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ interest }).eq('id', userId);
+  if (error) throw error;
+}
