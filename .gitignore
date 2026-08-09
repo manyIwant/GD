@@ -45,3 +45,4 @@ electron/out/
 *.exe
 *.app
 historical_context.txt
+.github/
