@@ -25,6 +25,45 @@ export interface Profile {
   mementos: Array<{ name: string; desc: string; emoji: string }>;
   explore_achievements: string[];
   created_at: string;
+  banned: boolean;
+  banned_at: string | null;
+  banned_by: string | null;
+  ban_reason: string | null;
+  appeal_chances: number;
+  appeal_count: number;
+  is_private: boolean;
+}
+
+export interface PublicProfile {
+  found: boolean;
+  is_private: boolean;
+  username: string | null;
+  level: number;
+  created_at: string;
+  id?: string;
+  avatar_url?: string | null;
+  xp?: number;
+  light_years_traveled?: number;
+  orders_completed?: number;
+  achievements_count?: number;
+  selected_ship?: string;
+  sign_in_streak?: number;
+}
+
+export interface RiskItem {
+  id: string;
+  username: string | null;
+  role: string;
+  level: number;
+  balance: number;
+  xp: number;
+  light_years: number;
+  orders: number;
+  appeal_count: number;
+  banned: boolean;
+  created_at: string;
+  risk_score: number;
+  flags: string[];
 }
 
 export interface OrderRow {

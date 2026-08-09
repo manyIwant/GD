@@ -6,10 +6,11 @@ import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/types';
 import { toast } from 'sonner';
 
-// 将任意用户名（含中文）转换为稳定的 ASCII 邮箱本地名
-// Supabase Auth 的 email 字段不支持非 ASCII 字符，因此用 FNV-1a 哈希
-// 把用户名映射为确定性的纯字母数字标识，保证同一用户名永远对应同一账号
-function usernameToEmail(username: string): string {
+// 将用户名映射为合法的 Supabase Auth 邮箱（本地名仅允许 ASCII）
+// 规则：纯 ASCII 用户名沿用旧版「字面邮箱」，保证历史账号（含管理员）可正常登录；
+// 非 ASCII（如中文）用户名用 FNV-1a 哈希生成稳定的 ASCII 标识。
+// 返回候选邮箱列表（ASCII 用户名会同时给出字面与哈希两种，登录时逐一尝试以兼容过渡期账号）
+function emailCandidates(username: string): string[] {
   const trimmed = username.trim().toLowerCase();
   let hash = 0x811c9dc5;
   for (let i = 0; i < trimmed.length; i++) {
@@ -17,7 +18,9 @@ function usernameToEmail(username: string): string {
     hash = Math.imul(hash, 0x01000193);
   }
   const hex = (hash >>> 0).toString(16).padStart(8, '0');
-  return `u${hex}@miaoda.com`;
+  const hashed = `u${hex}@miaoda.com`;
+  const isAscii = [...trimmed].every((c) => c.charCodeAt(0) < 128);
+  return isAscii ? [`${trimmed}@miaoda.com`, hashed] : [hashed];
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
@@ -60,23 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(profileData);
   };
 
-  // 检查封禁：被封禁用户强制下线
-  const checkBanned = async (userId: string) => {
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('banned')
-      .eq('id', userId)
-      .maybeSingle();
-    if (prof?.banned) {
-      await supabase.auth.signOut();
-      setUser(null);
-      setProfile(null);
-      toast.error('您的账号已被封禁，无法继续使用');
-      return true;
-    }
-    return false;
-  };
-
   useEffect(() => {
     supabase
       .auth
@@ -85,10 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data: { session } }) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          // 恢复会话时检查封禁状态
-          checkBanned(session.user.id).then((banned) => {
-            if (!banned) getProfile(session.user.id).then(setProfile);
-          });
+          // 恢复会话：始终加载资料（含封禁信息），由前端决定展示
+          getProfile(session.user.id).then(setProfile);
         }
       })
       // @ts-ignore
@@ -104,9 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkBanned(session.user.id).then((banned) => {
-          if (!banned) getProfile(session.user.id).then(setProfile);
-        });
+        getProfile(session.user.id).then(setProfile);
       } else {
         setProfile(null);
       }
@@ -117,24 +99,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithUsername = async (username: string, password: string) => {
     try {
-      const email = usernameToEmail(username);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // 逐一尝试候选邮箱，兼容旧版字面邮箱账号与新版哈希邮箱账号
+      const candidates = emailCandidates(username);
+      let data: { user: User | null } | null = null;
+      let lastError: unknown = null;
+      for (const email of candidates) {
+        const res = await supabase.auth.signInWithPassword({ email, password });
+        if (!res.error) { data = res.data; lastError = null; break; }
+        lastError = res.error;
+      }
+      if (lastError) throw lastError;
 
-      if (error) throw error;
-
-      // 检查封禁状态
-      if (data.user) {
+      // 检查封禁状态：保留登录态，交由封号申诉页处理
+      if (data?.user) {
         const { data: prof } = await supabase
           .from('profiles')
           .select('banned')
           .eq('id', data.user.id)
           .maybeSingle();
         if (prof?.banned) {
-          await supabase.auth.signOut();
-          throw new Error('该账号已被封禁，请联系管理员');
+          return { error: null };
         }
       }
 
@@ -146,7 +130,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithUsername = async (username: string, password: string) => {
     try {
-      const email = usernameToEmail(username);
+      // 注册统一使用首选（字面/哈希）邮箱
+      const email = emailCandidates(username)[0];
       const { error } = await supabase.auth.signUp({
         email,
         password,

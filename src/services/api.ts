@@ -2,7 +2,7 @@
 import { supabase } from '@/db/supabase';
 import type {
   Profile, OrderRow, AchievementRow, DailyTaskRow, FlightLogRow, UnlockedShipRow, LeaderboardEntry,
-  ShipProgressRow, SpinRecordRow,
+  ShipProgressRow, SpinRecordRow, PublicProfile, RiskItem,
 } from '@/types/types';
 
 // ===== Auth =====
@@ -279,4 +279,33 @@ export async function fetchSpinRecords(userId: string, limit: number = 10): Prom
   const { data, error } = await supabase.from('spin_records').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return Array.isArray(data) ? (data as SpinRecordRow[]) : [];
+}
+
+// ===== 封号申诉 / 公开资料 / 风控 =====
+export async function appealUnban(answers: boolean[]): Promise<{ success: boolean; remaining: number }> {
+  const { data, error } = await supabase.rpc('appeal_unban', { p_answers: answers });
+  if (error) throw error;
+  return data as { success: boolean; remaining: number };
+}
+
+export async function getPublicProfile(userId: string): Promise<PublicProfile | null> {
+  const { data, error } = await supabase.rpc('get_public_profile', { p_user_id: userId });
+  if (error) throw error;
+  return (data as PublicProfile) || null;
+}
+
+export async function getRiskReport(): Promise<RiskItem[]> {
+  const { data, error } = await supabase.rpc('get_risk_report');
+  if (error) throw error;
+  return Array.isArray(data) ? (data as RiskItem[]) : [];
+}
+
+export async function setPrivacy(userId: string, isPrivate: boolean): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ is_private: isPrivate }).eq('id', userId);
+  if (error) throw error;
+}
+
+export async function banUserWithReason(userId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc('ban_user', { p_user_id: userId, p_reason: reason });
+  if (error) throw error;
 }

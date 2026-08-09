@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { HudPanel, DataItem, EmptyState } from '@/components/common/Hud';
 import { Button } from '@/components/ui/button';
 import { fetchLeaderboard, fetchUserRank } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { fmtLY } from '@/data/pricing';
 import type { LeaderboardEntry } from '@/types/types';
-import { Trophy, Medal, Award, Crown } from 'lucide-react';
+import { Trophy, Medal, Award, Crown, ChevronRight } from 'lucide-react';
 
 type Category = 'light_years' | 'orders' | 'achievements' | 'xp';
 
@@ -21,6 +22,7 @@ const RANK_ICONS = [Crown, Medal, Award];
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [category, setCategory] = useState<Category>('light_years');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
@@ -108,7 +110,12 @@ export default function LeaderboardPage() {
               const isMe = e.id === user?.id;
               const fmt = CATEGORIES.find((c) => c.key === category)?.fmt;
               return (
-                <div key={e.id} className={`flex items-center gap-3 p-3 ${isMe ? 'bg-laser/10 neon-active' : ''}`}>
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => navigate(`/profile/${e.id}`)}
+                  className={`w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-laser/5 ${isMe ? 'bg-laser/10 neon-active' : ''}`}
+                >
                   <span className={`w-7 text-center font-bold font-mono-num ${i < 3 ? RANK_COLORS[i] : 'text-muted-foreground'}`}>
                     {i + 1}
                   </span>
@@ -120,7 +127,8 @@ export default function LeaderboardPage() {
                     <div className="text-[10px] text-muted-foreground">Lv.{e.level}</div>
                   </div>
                   <div className="text-sm font-bold font-mono-num text-laser">{fmt?.(e)}</div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
               );
             })
           )}

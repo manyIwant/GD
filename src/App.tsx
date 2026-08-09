@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import AppLayout from '@/components/layouts/AppLayout';
 import Starfield from '@/components/common/Starfield';
+import BannedPage from '@/pages/BannedPage';
 
 import { routes } from './routes';
 
@@ -25,7 +26,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function AppShell() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
   const isLogin = location.pathname === '/login';
 
@@ -49,6 +50,11 @@ function AppShell() {
         <Route path="/login" element={routes.find((r) => r.path === '/login')?.element} />
       </Routes>
     );
+  }
+
+  // 已登录但被封禁 → 展示封号申诉页（不直接断开）
+  if (profile?.banned) {
+    return <BannedPage />;
   }
 
   // 已登录 → 带布局渲染
