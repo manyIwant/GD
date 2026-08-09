@@ -24,6 +24,7 @@ export default function StarMapPage() {
   const [warpTarget, setWarpTarget] = useState<StarNode | null>(null);
   const [shipPos, setShipPos] = useState({ x: 50, y: 52 });
   const [shipTarget, setShipTarget] = useState({ x: 50, y: 52 });
+  const [currentNodeId, setCurrentNodeId] = useState('home');
   const [scanOpen, setScanOpen] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [exploreEvent, setExploreEvent] = useState<ExploreEvent | null>(null);
@@ -77,6 +78,11 @@ export default function StarMapPage() {
 
   const warpTo = useCallback((node: StarNode) => {
     if (node.id === 'home') { toast.info('🏠 你已在母港'); return; }
+    // 边界判断：已在当前节点，禁止重复曲速
+    if (node.id === currentNodeId) {
+      toast.info('🛰 你已身处此星域，无需再次曲速');
+      return;
+    }
     setWarpTarget(node);
     setWarping(true);
     // 曲速前往时先收起信息框，航行中显示曲速提示
@@ -87,12 +93,13 @@ export default function StarMapPage() {
       setWarping(false);
       setDiscovered((prev) => { const n = new Set(prev); n.add(node.id); return n; });
       setVisited((prev) => { const n = new Set(prev); n.add(node.id); return n; });
+      setCurrentNodeId(node.id);
       toast.success(`🚀 曲速航行完成！已抵达 ${node.name}`);
       // 抵达后重新弹出信息框，展示更新后的界面
       setSelected(node);
       if (Math.random() < 0.5) setTimeout(() => setExploreEvent(pickExploreEvent()), 600);
     }, 2600);
-  }, []);
+  }, [currentNodeId]);
 
   const startScan = useCallback(() => {
     if (!selected) return;
@@ -267,11 +274,22 @@ export default function StarMapPage() {
         })}
 
         {/* 玩家飞船 */}
-        <div className="absolute z-20 -translate-x-1/2 -translate-y-1/2" style={{ left: `${shipPos.x}%`, top: `${shipPos.y}%` }}>
-          <div className={`text-2xl md:text-3xl drop-shadow-[0_0_8px_rgba(0,240,255,0.8)] ${warping ? 'animate-warp' : ''}`}>🚀</div>
-          {warping && warpTarget && (
-            <div className="absolute top-1/2 left-0 w-20 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent -translate-y-1/2" />
-          )}
+        <div className="absolute z-20 -translate-x-1/2 -translate-y-1/2 transition-none" style={{ left: `${shipPos.x}%`, top: `${shipPos.y}%` }}>
+          <div className={`relative ${warping ? 'animate-warp' : ''}`}>
+            {/* 飞船光晕 */}
+            <div className="absolute inset-0 -m-3 rounded-full blur-md"
+              style={{ background: 'radial-gradient(circle, rgba(0,240,255,0.6), transparent 70%)' }} />
+            {/* 飞船图标 */}
+            <div className="relative text-xl md:text-2xl drop-shadow-[0_0_10px_rgba(0,240,255,0.9)]">🚀</div>
+            {/* 曲速尾迹 */}
+            {warping && warpTarget && (
+              <div className="absolute top-1/2 left-0 h-[2px] -translate-y-1/2 animate-pulse"
+                style={{
+                  width: '64px',
+                  background: 'linear-gradient(90deg, transparent, rgba(0,240,255,0.9), transparent)',
+                }} />
+            )}
+          </div>
           {warping && warpTarget && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-28 bg-black/80 border border-cyan-500/50 px-2 py-1">
               <div className="text-[9px] text-cyan-400 font-mono-num text-center">曲速 {warpProgress}%</div>
@@ -282,6 +300,39 @@ export default function StarMapPage() {
           )}
         </div>
       </div>
+
+      {/* 曲速沉浸层：隧道光带 + 拉伸星线 */}
+      {warping && (
+        <div className="absolute inset-0 z-[15] pointer-events-none overflow-hidden">
+          {/* 隧道径向光晕 */}
+          <div className="absolute inset-0 animate-warp-pulse"
+            style={{
+              background: 'radial-gradient(ellipse at 50% 50%, rgba(0,180,255,0.18) 0%, rgba(0,60,120,0.08) 40%, transparent 70%)',
+            }} />
+          {/* 拉伸星线（向中心汇聚的径向线） */}
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full animate-warp-lines">
+            {Array.from({ length: 28 }).map((_, i) => {
+              const angle = (i * 360) / 28;
+              const rad = (angle * Math.PI) / 180;
+              const r = 62;
+              const x = 50 + Math.cos(rad) * r;
+              const y = 50 + Math.sin(rad) * r;
+              return (
+                <line
+                  key={i}
+                  x1={50} y1={50} x2={x} y2={y}
+                  stroke="rgba(0,220,255,0.5)"
+                  strokeWidth={0.15}
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            })}
+          </svg>
+          {/* 边缘暗角 */}
+          <div className="absolute inset-0"
+            style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%)' }} />
+        </div>
+      )}
 
       {/* 宇宙广播滚动条 */}
       <div className="absolute bottom-20 md:bottom-24 left-0 right-0 z-20 px-4 pointer-events-none">
@@ -303,7 +354,7 @@ export default function StarMapPage() {
           <Button variant="outline" className="btn-mech border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10" onClick={() => navigate('/route')}>
             <Rocket className="w-4 h-4 mr-1.5" /> 预订航线
           </Button>
-          <Button className="btn-mech bg-cyan-500/80 text-white hover:bg-cyan-500" onClick={() => { setShipTarget({ x: 50, y: 52 }); toast.info('🏠 返回母港'); }}>
+          <Button className="btn-mech bg-cyan-500/80 text-white hover:bg-cyan-500" onClick={() => { setShipTarget({ x: 50, y: 52 }); setCurrentNodeId('home'); toast.info('🏠 返回母港'); }}>
             <Compass className="w-4 h-4 mr-1.5" /> 回到母港
           </Button>
         </div>
@@ -378,9 +429,15 @@ export default function StarMapPage() {
                 <div className="w-full flex items-center justify-center gap-2 py-2 border border-green-500/40 bg-green-500/10 text-green-400 text-sm font-bold">
                   <CheckCircle2 className="w-4 h-4" /> 已抵达此地
                 </div>
-                <Button variant="outline" className="w-full btn-mech border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10 text-xs" onClick={() => warpTo(selected)}>
-                  <Rocket className="w-3.5 h-3.5 mr-1" /> 再次曲速前往
-                </Button>
+                {selected.id === currentNodeId ? (
+                  <div className="w-full flex items-center justify-center gap-2 py-2 border border-cyan-400/40 bg-cyan-400/10 text-cyan-400 text-xs font-bold">
+                    <Rocket className="w-3.5 h-3.5" /> 当前所在星域
+                  </div>
+                ) : (
+                  <Button variant="outline" className="w-full btn-mech border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10 text-xs" onClick={() => warpTo(selected)}>
+                    <Rocket className="w-3.5 h-3.5 mr-1" /> 再次曲速前往
+                  </Button>
+                )}
               </>
             )}
             {selected && selected.id === 'home' && (

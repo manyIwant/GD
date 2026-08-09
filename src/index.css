@@ -176,11 +176,25 @@
 .animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
 
 @keyframes warp {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.6) translateX(20px); opacity: 0.6; }
-  100% { transform: scale(1.4) translateX(-10px); opacity: 1; }
+  0% { opacity: 0.85; filter: brightness(1); }
+  50% { opacity: 1; filter: brightness(1.4); }
+  100% { opacity: 0.85; filter: brightness(1); }
 }
-.animate-warp { animation: warp 0.8s ease-in-out infinite; }
+.animate-warp { animation: warp 1.4s ease-in-out infinite; }
+
+@keyframes warp-pulse {
+  0% { opacity: 0.4; transform: scale(0.96); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+  100% { opacity: 0.4; transform: scale(0.96); }
+}
+.animate-warp-pulse { animation: warp-pulse 1.6s ease-in-out infinite; }
+
+@keyframes warp-lines {
+  0% { opacity: 0; transform: scale(0.7); }
+  30% { opacity: 1; }
+  100% { opacity: 0.85; transform: scale(1.15); }
+}
+.animate-warp-lines { animation: warp-lines 1.8s ease-out infinite; }
 
 @keyframes warp-streak {
   0% { transform: translateY(0) scaleY(0.5); opacity: 0; }

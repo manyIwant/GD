@@ -6,6 +6,20 @@ import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types/types';
 import { toast } from 'sonner';
 
+// 将任意用户名（含中文）转换为稳定的 ASCII 邮箱本地名
+// Supabase Auth 的 email 字段不支持非 ASCII 字符，因此用 FNV-1a 哈希
+// 把用户名映射为确定性的纯字母数字标识，保证同一用户名永远对应同一账号
+function usernameToEmail(username: string): string {
+  const trimmed = username.trim().toLowerCase();
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < trimmed.length; i++) {
+    hash ^= trimmed.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  const hex = (hash >>> 0).toString(16).padStart(8, '0');
+  return `u${hex}@miaoda.com`;
+}
+
 export async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
@@ -103,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithUsername = async (username: string, password: string) => {
     try {
-      const email = `${username}@miaoda.com`;
+      const email = usernameToEmail(username);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -132,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithUsername = async (username: string, password: string) => {
     try {
-      const email = `${username}@miaoda.com`;
+      const email = usernameToEmail(username);
       const { error } = await supabase.auth.signUp({
         email,
         password,
