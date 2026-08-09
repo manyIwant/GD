@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>高德星际 · 星际客运</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-nebula"></div>
+<canvas id="starCanvas"></canvas>
+<div class="bg-stars"></div>
+<div class="app-container">
+
+
+
+<!-- 顶部工具栏 -->
+<div style="position:fixed;top:0;left:0;right:0;height:28px;z-index:130;background:rgba(6,10,20,0.95);display:flex;align-items:center;padding:0 8px" class="mob-top-bar">
+<div class="hamburger" id="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+</div>
+
+<!-- 桌面端顶部Logo条 -->
+<div class="top-bar-desktop">
+<div class="logo-dot"></div><span class="logo-text">高德星际</span>
+<nav style="display:flex;gap:2px;margin-left:16px">
+<button class="tb-nav active" data-page="page1">首页</button>
+<button class="tb-nav" data-page="page2">航线</button>
+<button class="tb-nav" data-page="page5">订单</button>
+<button class="tb-nav" data-page="page6">通行证</button>
+<button class="tb-nav" data-page="page10">监控</button>
+<button class="tb-nav" data-page="page8">目的地</button>
+<button class="tb-nav" data-page="page15">通讯</button>
+</nav>
+<span style="margin-left:auto;font-size:12px;color:var(--text2)">👤 <b class="js-username" style="color:#fcd34d">未登录</b></span>
+<span style="font-size:12px;color:#4ade80;font-weight:700;margin-left:8px" id="balDesk">¥0</span>
+<button class="btn btn-sm" style="background:linear-gradient(135deg,#f59e0b,#e54545);color:#fff;padding:4px 12px;font-size:11px;border-radius:14px;margin-left:8px" onclick="openRecharge()">⚡ 充值</button>
+</div>
+
+<!-- 侧边栏覆盖层 -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<!-- 侧边栏 -->
+<div class="sidebar" id="sidebar">
+<div style="text-align:center;margin-bottom:20px">
+<div style="font-size:40px;margin-bottom:4px">🧑‍🚀</div>
+<div style="font-size:16px;font-weight:700;color:#fff" class="js-username">未登录</div>
+<div style="font-size:12px;color:var(--text2);margin-top:4px">星际航行账户</div>
+</div>
+<div class="s-sec"><div class="s-label">💰 账户余额</div>
+<div class="s-row"><span>星际信用点</span><span style="color:#4ade80;font-weight:700" id="balSide">¥0</span></div>
+<button class="btn btn-block btn-sm" style="background:linear-gradient(135deg,#f59e0b,#e54545);color:#fff" onclick="openRecharge()">⚡ 充值中心</button>
+</div>
+<div class="s-sec"><div class="s-label">🏆 成就 (<span id="achCount">0</span>/9)</div><div id="achList"></div></div>
+<div class="s-sec"><div class="s-label">🌌 航行统计</div>
+<div class="s-row"><span>累计光年</span><span style="color:#fcd34d;font-weight:700" id="lyStat">0</span></div>
+<div class="s-row"><span>完成航程</span><span style="color:#60a5fa;font-weight:700" id="doneStat">0</span></div>
+<div class="s-row" onclick="showShareCard()" style="cursor:pointer"><span>📋 航行护照</span><span style="color:var(--text3)">查看 ›</span></div>
+</div>
+<div class="s-sec"><button class="btn btn-outline btn-block btn-sm" onclick="if(confirm('确定退出登录？数据保留在本地。')){S.user=null;localStorage.removeItem('gdstar_user');updateUserUI();updateSidebar();toggleSidebar();openMod('modalLogin');}">🚪 切换账号</button></div>
+</div>
+
+<main class="main-content" id="mainContent">
+
+<!-- 页面1: 首页 -->
+<div class="page active" id="page1">
+<div class="status-bar"><span class="time" id="st1">--</span><span id="bat1">🔋 100%</span></div>
+<div class="search-card">
+<div class="search-points" id="searchPoints">
+<div class="sp-row"><div class="sp-dot start"></div><div class="sp-input"><input type="text" placeholder="出发地" value="地球（亚洲·海口）" class="js-origin"></div></div>
+<button class="add-transit" id="addTransitBtn" onclick="addTransit()">+ 添加中转点</button>
+<div class="sp-row"><div class="sp-dot end"></div><div class="sp-input"><input type="text" placeholder="目的地" value="" class="js-dest"></div></div>
+</div>
+<div class="candidates-scroll">
+<span class="chip">地球（亚洲·海口）</span><span class="chip">月球静海中转港</span><span class="chip">火星奥林匹斯港</span><span class="chip">谷神星补给站</span><span class="chip">太阳系跃迁枢纽</span><span class="chip">半人马座α星</span><span class="chip">天狼星殖民地</span><span class="chip">大麦哲伦云前哨</span><span class="chip">仙女座M31</span><span class="chip">巴纳德星中转站</span><span class="chip">罗斯128殖民地</span><span class="chip">格利泽581宜居站</span>
+</div>
+</div>
+<div class="travel-options">
+<span class="topt" onclick="selTopt(this)">🚗 驾车</span><span class="topt" onclick="selTopt(this)">✈ 大气层航班</span><span class="topt active" onclick="selTopt(this)">🚀 星际穿梭艇</span><span class="topt" onclick="selTopt(this)">🌌 跨星系跃迁舰</span><span class="topt" onclick="selTopt(this)">⚡ 超光速实验</span>
+</div>
+<button class="btn btn-primary btn-block" style="margin-top:14px" onclick="goPage('page2')">🔍 搜索星际航线</button>
+<div style="display:flex;gap:10px;margin-top:12px">
+<div class="card" style="flex:1;text-align:center;cursor:pointer" onclick="openMod('modalWeather')"><div style="font-size:28px">🌌</div><div style="font-size:13px;color:#fff;margin-top:4px">星际天气</div><div style="font-size:11px;color:var(--text3)">太阳活动·平静</div></div>
+<div class="card" style="flex:1;text-align:center;cursor:pointer" onclick="openMod('modalRadiation')"><div style="font-size:28px">⚠️</div><div style="font-size:13px;color:#fff;margin-top:4px">辐射预警</div><div style="font-size:11px;color:var(--green)">当前·安全级别</div></div>
+</div>
+</div>
+
+<!-- 页面2: 航线 -->
+<div class="page" id="page2">
+<div class="status-bar"><span class="time" id="st2">--</span><span class="status-icons"><span id="bat2">🔋 100%</span></span></div>
+<div class="card"><div class="card-title">🗺 星际航线</div>
+<div class="route-visual"><div class="route-line"></div>
+<div class="rn start"><div class="r-name">🌍 地球·海口航天港</div><div class="r-info">出发点</div></div>
+<div class="rn"><div class="r-name">🌙 月球静海中转港</div><div class="r-info">384,400 km · 8h</div></div>
+<div class="rn"><div class="r-name">🔴 火星奥林匹斯港</div><div class="r-info">225M km · 3d</div></div>
+<div class="rn"><div class="r-name">⚡ 太阳系跃迁枢纽</div><div class="r-info">4.5B km · 12d</div></div>
+<div class="rn"><div class="r-name">⭐ 半人马座α星</div><div class="r-info">4.37ly · 45d</div></div>
+<div class="rn end"><div class="r-name">🌌 仙女座M31</div><div class="r-info">2.537M ly · 180d · 单向</div></div>
+</div></div>
+<div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:8px">🚀 航线方案</div>
+<div class="plan-card sel" onclick="selPlan(this)" data-p="cnsa"><div class="pi">🇨🇳</div><div class="pinfo"><div class="pname">中国航天·长征跃迁舰</div><div class="pdetail">经济休眠舱 | 辐射Lv4 | 可停靠 | 180d</div></div><div class="pprice"><div class="price">¥128万</div><div class="unit">起</div></div></div>
+<div class="plan-card" onclick="selPlan(this)" data-p="nasa"><div class="pi">🇺🇸</div><div class="pinfo"><div class="pname">NASA·猎户座聚变星舰</div><div class="pdetail">标准生态舱 | 辐射Lv5 | 可停靠 | 155d</div></div><div class="pprice"><div class="price">¥256万</div><div class="unit">起</div></div></div>
+<div class="plan-card" onclick="selPlan(this)" data-p="spacex"><div class="pi">🚀</div><div class="pinfo"><div class="pname">SpaceX·星舰超光速号</div><div class="pdetail">豪华生态圈 | 辐射Lv6 | 直航 | 120d</div></div><div class="pprice"><div class="price">¥580万</div><div class="unit">起</div></div></div>
+<div class="plan-card" onclick="selPlan(this)" data-p="esa"><div class="pi">🇪🇺</div><div class="pinfo"><div class="pname">欧空局·雅典娜远航船</div><div class="pdetail">科研观测舱 | 辐射Lv4 | 多段停靠 | 210d</div></div><div class="pprice"><div class="price">¥198万</div><div class="unit">起</div></div></div>
+<div class="plan-card" onclick="selPlan(this)" data-p="ark"><div class="pi">🏛</div><div class="pinfo"><div class="pname">私营星际·方舟号</div><div class="pdetail">经济/标准 | 辐射Lv3 | 可停靠 | 200d</div></div><div class="pprice"><div class="price">¥86万</div><div class="unit">起</div></div></div>
+<button class="btn btn-primary btn-block" style="margin-top:8px" onclick="openMod('modalRisk')">🚀 呼叫星际飞船</button>
+<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+<button class="btn btn-outline btn-sm" onclick="openMod('modalUpgrade')">🛏 舱位升级</button>
+<button class="btn btn-outline btn-sm" onclick="openMod('modalInsurance')">🛡 星际保险</button>
+<button class="btn btn-outline btn-sm" onclick="openMod('modalFilter')">🔍 筛选</button>
+</div>
+</div>
+
+<!-- 页面4: 支付成功 -->
+<div class="page" id="page4">
+<div class="status-bar"><span class="time" id="st4">--</span><span class="status-icons"><span id="bat4">🔋 100%</span></span></div>
+<div id="orderDetail"></div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+<button class="btn btn-primary btn-sm" onclick="dlTicket()">📥 电子船票</button>
+<button class="btn btn-outline btn-sm" onclick="goPage('page6')">🏥 体检预约</button>
+<button class="btn btn-outline btn-sm" onclick="goPage('page7')">🛒 中转服务</button>
+<button class="btn btn-outline btn-sm" onclick="openMod('modalShop')">📦 物资商城</button>
+</div>
+<div style="display:flex;gap:10px;margin-top:10px;overflow-x:auto;padding-bottom:4px">
+<div class="card" style="flex:0 0 140px;text-align:center;cursor:pointer;overflow:hidden;padding:0" onclick="bookLdg('月球','静海景观舱','¥8,800/晚')"><div class="location-hero" style="height:80px;margin:0;border-radius:0"><div class="loc-bg bg-moon"></div><div class="loc-overlay"></div><div class="loc-info" style="bottom:6px;left:8px"><div class="loc-name" style="font-size:13px">🌙 月球</div></div></div><div style="padding:10px"><div style="font-size:12px;color:#fff">静海景观舱</div><div style="font-size:11px;color:var(--text3)">¥8,800/晚</div></div></div>
+<div class="card" style="flex:0 0 140px;text-align:center;cursor:pointer;overflow:hidden;padding:0" onclick="bookLdg('火星','奥林匹斯山景套房','¥18,000/晚')"><div class="location-hero" style="height:80px;margin:0;border-radius:0"><div class="loc-bg bg-mars"></div><div class="loc-overlay"></div><div class="loc-info" style="bottom:6px;left:8px"><div class="loc-name" style="font-size:13px">🔴 火星</div></div></div><div style="padding:10px"><div style="font-size:12px;color:#fff">山景套房</div><div style="font-size:11px;color:var(--text3)">¥18,000/晚</div></div></div>
+<div class="card" style="flex:0 0 140px;text-align:center;cursor:pointer;overflow:hidden;padding:0" onclick="bookLdg('半人马座α','双恒星观景别墅','¥38,000/晚')"><div class="location-hero" style="height:80px;margin:0;border-radius:0"><div class="loc-bg bg-centauri"></div><div class="loc-overlay"></div><div class="loc-info" style="bottom:6px;left:8px"><div class="loc-name" style="font-size:13px">⭐ 半人马座</div></div></div><div style="padding:10px"><div style="font-size:12px;color:#fff">双恒星别墅</div><div style="font-size:11px;color:var(--text3)">¥38,000/晚</div></div></div>
+<div class="card" style="flex:0 0 140px;text-align:center;cursor:pointer;overflow:hidden;padding:0" onclick="bookLdg('仙女座M31','旋臂穹顶酒店','¥52,000/晚')"><div class="location-hero" style="height:80px;margin:0;border-radius:0"><div class="loc-bg bg-andromeda"></div><div class="loc-overlay"></div><div class="loc-info" style="bottom:6px;left:8px"><div class="loc-name" style="font-size:13px">🌀 仙女座</div></div></div><div style="padding:10px"><div style="font-size:12px;color:#fff">穹顶酒店</div><div style="font-size:11px;color:var(--text3)">¥52,000/晚</div></div></div>
+</div>
+</div>
+
+<!-- 页面5: 订单 -->
+<div class="page" id="page5">
+<div class="status-bar"><span class="time" id="st5">--</span><span class="status-icons"><span id="bat5">🔋 100%</span></span></div>
+<div style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none">
+<span class="chip active" onclick="fltOrders(this,'all')">全部</span><span class="chip" onclick="fltOrders(this,'pending')">待登船</span><span class="chip" onclick="fltOrders(this,'flying')">航行中</span><span class="chip" onclick="fltOrders(this,'done')">已完成</span><span class="chip" onclick="fltOrders(this,'cancelled')">已取消</span>
+</div>
+<div id="ordersContainer"></div>
+</div>
+
+<!-- 页面6: 通行证 -->
+<div class="page" id="page6">
+<div class="status-bar"><span class="time" id="st6">--</span><span class="status-icons"><span id="bat6">🔋 100%</span></span></div>
+<div class="card"><div class="card-title">🪪 星际通行证申请</div>
+<div class="fg"><div class="flabel">居住地星球</div><input class="finput" value="地球·亚洲·海口" readonly></div>
+<div class="fg"><div class="flabel">基因备案编码</div><input class="finput" placeholder="GEN-xxxx-xxxx-xxxx"></div>
+<div class="fg"><div class="flabel">太空体检报告</div><div style="border:2px dashed rgba(255,255,255,0.15);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;color:var(--text2)" onclick="alert('📄 模拟上传中…\n体检报告已接收，AI审核中。')">📄 点击上传体检报告<br><span style="font-size:11px">需含辐射耐受·骨质密度·心理测评</span></div></div>
+<div class="fg"><div class="flabel">心理测评报告</div><div style="border:2px dashed rgba(255,255,255,0.15);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;color:var(--text2)" onclick="alert('📄 模拟上传中…\n心理测评报告已接收。')">📄 点击上传心理测评<br><span style="font-size:11px">认证机构出具</span></div></div>
+<div class="fg"><div class="flabel">紧急联系人（选填）</div><input class="finput" placeholder="姓名·通讯频段"><div style="font-size:11px;color:var(--orange);margin-top:4px">⚠ 跨星系远航后无法实时通讯</div></div>
+</div>
+<div class="card">
+<div class="cb-row"><input type="checkbox" id="ag1"><label for="ag1">我自愿承担星际航行全部风险</label></div>
+<div class="cb-row"><input type="checkbox" id="ag2"><label for="ag2">我知晓超长航线将导致文明信息隔离</label></div>
+<div class="cb-row"><input type="checkbox" id="ag3"><label for="ag3">我接受跨星系通讯延迟无法实时联络</label></div>
+</div>
+<button class="btn btn-primary btn-block" onclick="alert('✅ 通行证申请已提交！\n审核周期3-5个工作日。')">✅ 提交通行证申请</button>
+<button class="btn btn-outline btn-block btn-sm" style="margin-top:8px" onclick="alert('🧬 可预约机构：\n· 海口航天港体检中心\n· 月球静海医疗站\n· 火星轨道港医疗舱')">🧬 预约生物信息采集</button>
+</div>
+
+<!-- 页面7: 中转站 -->
+<div class="page" id="page7">
+<div class="status-bar"><span class="time" id="st7">--</span><span class="status-icons"><span id="bat7">🔋 100%</span></span></div>
+<div style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none">
+<span class="chip active">月球基地</span><span class="chip">火星轨道港</span><span class="chip">太阳系跃迁枢纽</span><span class="chip">谷神星补给站</span>
+</div>
+<div class="location-hero"><div class="loc-bg bg-moon"></div><div class="loc-overlay"></div><div class="loc-info"><div class="loc-name">🌙 月球静海中转港</div><div class="loc-desc">人类首个地外中转枢纽·低重力环境</div></div></div>
+<div class="card"><div class="card-title">站内服务</div><div class="g2">
+<div class="svc" onclick="alert('🛍 免税商业区\\n月球最大购物中心，涵盖地球奢侈品、月球特产。')"><div class="si">🛍</div><div class="sn">免税商业区</div></div>
+<div class="svc" onclick="alert('🏨 重力适应酒店\\n0.16G-1G多档调节。\\n标准间 ¥12,000/晚')"><div class="si">🏨</div><div class="sn">重力适应酒店</div></div>
+<div class="svc" onclick="alert('🏥 太空医疗中心\\n24h急救、辐射病治疗。')"><div class="si">🏥</div><div class="sn">太空医疗中心</div></div>
+<div class="svc" onclick="alert('🛏 休眠舱维护\\n密封性检查·营养液补给。\\n标准 ¥2,800')"><div class="si">🛏</div><div class="sn">休眠舱维护</div></div>
+<div class="svc" onclick="alert('📦 物资补给站\\n氧气罐·太空食品·应急装备。')"><div class="si">📦</div><div class="sn">物资补给站</div></div>
+<div class="svc" onclick="alert('🚁 飞行器租赁\\n站内穿梭机·月面探险车。\\n时租 ¥3,500起')"><div class="si">🚁</div><div class="sn">飞行器租赁</div></div>
+</div></div>
+<button class="btn btn-primary btn-block" onclick="alert('🛒 中转套餐预购成功！')">🛒 预购中转套餐</button>
+</div>
+
+<!-- 页面8: 目的地 -->
+<div class="page" id="page8">
+<div class="status-bar"><span class="time" id="st8">--</span><span class="status-icons"><span id="bat8">🔋 100%</span></span></div>
+<div style="display:flex;gap:8px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none">
+<span class="chip active" onclick="swDest(this,0)">🌙 月球</span><span class="chip" onclick="swDest(this,1)">🔴 火星</span><span class="chip" onclick="swDest(this,2)">🪨 谷神星</span><span class="chip" onclick="swDest(this,3)">⚡ 跃迁枢纽</span><span class="chip" onclick="swDest(this,4)">⭐ 半人马座</span><span class="chip" onclick="swDest(this,5)">💫 天狼星</span><span class="chip" onclick="swDest(this,6)">🌌 大麦哲伦云</span><span class="chip" onclick="swDest(this,7)">🌀 仙女座</span><span class="chip" onclick="swDest(this,8)">🔭 巴纳德星</span><span class="chip" onclick="swDest(this,9)">🔴 罗斯128</span><span class="chip" onclick="swDest(this,10)">🟢 格利泽581</span>
+</div>
+<div id="destContent"></div>
+</div>
+
+<!-- 页面10: 监控 -->
+<div class="page" id="page10">
+<div class="status-bar"><span class="time" id="st10">--</span><span class="status-icons"><span id="bat10">🔋 100%</span></span></div>
+<div id="monitorContent"></div>
+</div>
+
+<!-- 页面15: 通讯 -->
+<div class="page" id="page15">
+<div class="status-bar"><span class="time" id="st15">--</span><span class="status-icons"><span id="bat15">🔋 100%</span></span></div>
+<div class="card"><div class="card-title">📶 星际通讯服务</div></div>
+<div class="card"><div class="card-title">📱 短距离实时通讯</div><div class="card-row"><span class="card-label">范围</span><span class="card-value">太阳系内·≤50AU</span></div><div class="card-row"><span class="card-label">延迟</span><span class="card-value">≤4h</span></div><div class="card-row"><span class="card-label">套餐</span><span class="card-value">¥580/月</span></div><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="alert('📱 短距通讯套餐已开通！')">开通</button></div>
+<div class="card"><div class="card-title">📨 长距离信息投递</div><div class="card-row"><span class="card-label">范围</span><span class="card-value">恒星际·>50AU</span></div><div class="card-row"><span class="card-label">延迟</span><span class="card-value" style="color:var(--orange)">数十年至百万年</span></div><button class="btn btn-outline btn-sm" onclick="sendMsg()">📝 发送文字讯息</button></div>
+</div>
+
+</main>
+
+<nav class="mobile-tabs" id="mobileTabs">
+<button class="active" data-page="page1"><span class="badge" id="bdg1"></span>🏠 首页</button>
+<button data-page="page2">🗺 航线</button>
+<button data-page="page5"><span class="badge" id="bdg2"></span>📋 订单</button>
+<button data-page="page6">🪪 通行证</button>
+<button data-page="page10">📡 监控</button>
+</nav>
+
+</div>
+
+<!-- 弹窗：风险协议 -->
+<div class="modal-overlay" id="modalRisk"><div class="modal">
+<button class="modal-close" onclick="closeRisk()">✕</button>
+<h3>⚠ 星际远航安全知情确认书</h3>
+<div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px">
+<p style="color:#fff;font-weight:600;margin-bottom:8px" id="riskRouteLabel">航线：地球→仙女座M31（单向·超远距离）</p>
+<p>• 短程太阳系航线风险：太阳辐射暴、微流星体撞击</p>
+<p>• 恒星际辐射风险：宇宙射线、跃迁能量波动</p>
+<p>• 跨星系时间膨胀效应：抵达时母星文明可能已过数百万年</p>
+<p>• 通讯延迟：约<span id="riskDelay">250万</span>年（<span id="riskDelayLoc">仙女座M31</span>），无法实时联络</p>
+<p>• <b style="color:var(--red)">单向航行：不提供返程航班</b></p>
+<p>• 文明信息隔离：身份体系、法律保护可能失效</p>
+</div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk1"><label for="rk1">我知晓短程太阳系航线风险</label></div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk2"><label for="rk2">我知晓恒星际及跨星系辐射风险</label></div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk3"><label for="rk3">我理解时间膨胀效应及其后果</label></div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk4"><label for="rk4">我接受跨星系通讯延迟</label></div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk5"><label for="rk5">我知晓本航线为单向航行无返程</label></div>
+<div class="cb-row"><input type="checkbox" class="riskcb" id="rk6"><label for="rk6">我接受抵达后文明隔离及身份失效</label></div>
+<div style="background:rgba(229,69,69,0.08);border:1px solid rgba(229,69,69,0.3);border-radius:10px;padding:12px;margin:12px 0;text-align:center">
+<div style="color:var(--red);font-weight:700;font-size:14px">⚠ 终极警示：一旦出发将<b style="font-size:18px">永远无法返回地球</b></div>
+</div>
+<div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:12px">确认倒计时 <span id="cd" style="color:var(--blue);font-weight:700">10</span> 秒</div>
+<button class="btn btn-red btn-block" id="btnRisk" disabled onclick="doConfirm()">⚠ 我确认承担一切后果</button>
+</div></div>
+
+<!-- 弹窗：休眠启动 -->
+<div class="modal-overlay" id="modalHibernate"><div class="modal" style="text-align:center">
+<button class="modal-close" onclick="closeMod('modalHibernate')">✕</button>
+<h3 id="hibTitle">🧊 休眠舱启动</h3>
+<div style="font-size:40px;font-weight:800;color:#fff;margin:16px 0;font-family:monospace" id="hibCount">10</div>
+<div style="font-size:13px;color:var(--text2);margin-bottom:16px" id="hibDesc">休眠舱即将启动…</div>
+<div class="progress-bar" style="margin-bottom:16px"><div class="progress-fill" id="hibProg" style="width:0%"></div></div>
+<button class="btn btn-outline btn-sm" onclick="cancelHib()">取消休眠</button>
+</div></div>
+
+<!-- 弹窗：唤醒 -->
+<div class="modal-overlay" id="modalWakeup"><div class="modal" style="text-align:center">
+<h3 id="wuTitle">🌅 唤醒</h3><div id="wuBody"></div>
+</div></div>
+
+<!-- 弹窗：船票 -->
+<div class="modal-overlay" id="modalTicket"><div class="modal" style="background:#fff;color:#111;max-width:420px;padding:0;border:none;font-family:serif">
+<button class="modal-close" onclick="closeMod('modalTicket')" style="color:#333;position:absolute;top:8px;right:8px;z-index:10">✕</button>
+<div id="ticketContent" style="padding:24px 20px"></div>
+<div style="padding:12px 20px;border-top:1px dashed #ccc;display:flex;gap:8px;background:#fafafa;border-radius:0 0 var(--radius-lg) var(--radius-lg)">
+<button class="btn btn-sm" style="flex:1;background:#1678FF;color:#fff;border:none;border-radius:8px" onclick="window.print()">🖨 打印</button>
+<button class="btn btn-sm" style="flex:1;background:#333;color:#fff;border:none;border-radius:8px" onclick="closeMod('modalTicket')">关闭</button>
+</div></div></div>
+
+<!-- 弹窗：物资商城 -->
+<div class="modal-overlay" id="modalShop"><div class="modal">
+<button class="modal-close" onclick="closeMod('modalShop')">✕</button>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3 style="margin-bottom:0">🛒 星际物资商城</h3>
+<span id="cartBadge" style="font-size:24px;cursor:pointer;position:relative" onclick="showCart()">🛒<span id="cartCnt" style="display:none;position:absolute;top:-6px;right:-10px;min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font-size:10px;line-height:18px;text-align:center;padding:0 4px">0</span></span>
+</div>
+<div class="g2">
+<div class="svc shop-item" data-item="辐射防护服" data-price="28000" onclick="togCart(this)"><div class="si">🛡</div><div class="sn">深空辐射防护服</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥28,000</div></div>
+<div class="svc shop-item" data-item="休眠营养液" data-price="6800" onclick="togCart(this)"><div class="si">💉</div><div class="sn">长期休眠营养液</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥6,800/月</div></div>
+<div class="svc shop-item" data-item="氧气模块" data-price="3200" onclick="togCart(this)"><div class="si">🫧</div><div class="sn">便携氧气模块</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥3,200</div></div>
+<div class="svc shop-item" data-item="适应药剂" data-price="15600" onclick="togCart(this)"><div class="si">🧪</div><div class="sn">外星适应药剂</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥15,600</div></div>
+<div class="svc shop-item" data-item="通讯中继器" data-price="88000" onclick="togCart(this)"><div class="si">📡</div><div class="sn">星际通讯中继器</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥88,000</div></div>
+<div class="svc shop-item" data-item="露营装备" data-price="42000" onclick="togCart(this)"><div class="si">🏕</div><div class="sn">行星地表露营装备</div><div style="font-size:12px;color:var(--blue);margin-top:4px">¥42,000</div></div>
+</div>
+<div style="display:flex;gap:10px;margin-top:12px">
+<button class="btn btn-outline btn-sm" style="flex:1" onclick="clearCart()">🔄 清空</button>
+<button class="btn btn-primary btn-sm" style="flex:1" onclick="checkout()">💰 结算 <span id="cartTotal">¥0</span></button>
+</div>
+</div></div>
+
+<!-- 弹窗：舱位升级 -->
+<div class="modal-overlay" id="modalUpgrade"><div class="modal">
+<button class="modal-close" onclick="closeMod('modalUpgrade')">✕</button><h3>🛏 舱型升级</h3>
+<div class="plan-card"><div class="pinfo"><div class="pname">💤 经济休眠舱</div><div class="pdetail">基础休眠·辐射Lv3</div></div><div class="pprice"><div class="price">¥128万</div></div></div>
+<div class="plan-card"><div class="pinfo"><div class="pname">🌿 标准生态舱</div><div class="pdetail">独立空间·辐射Lv5</div></div><div class="pprice"><div class="price">+¥128万</div></div></div>
+<div class="plan-card"><div class="pinfo"><div class="pname">👑 豪华生态圈</div><div class="pdetail">全景舷窗·辐射Lv6</div></div><div class="pprice"><div class="price">+¥452万</div></div></div>
+<div class="plan-card"><div class="pinfo"><div class="pname">🔬 科研观测舱</div><div class="pdetail">天文设备·辐射Lv4</div></div><div class="pprice"><div class="price">+¥70万</div></div></div>
+<button class="btn btn-primary btn-block" onclick="addPurch('舱位升级','+¥128~452万');alert('✅ 升级确认');closeMod('modalUpgrade')">✅ 确认升级</button>
+</div></div>
+
+<!-- 弹窗：保险 -->
+<div class="modal-overlay" id="modalInsurance"><div class="modal">
+<button class="modal-close" onclick="closeMod('modalInsurance')">✕</button><h3>🛡 星际保险</h3>
+<div class="plan-card"><div class="pinfo"><div class="pname">🛡 短途意外险</div><div class="pdetail">太阳系内·赔付¥500万</div></div><div class="pprice"><div class="price">¥1,200</div></div></div>
+<div class="plan-card"><div class="pinfo"><div class="pname">🛡 恒星际保障</div><div class="pdetail">跨恒星系·赔付¥2000万</div></div><div class="pprice"><div class="price">¥12,800</div></div></div>
+<div class="plan-card"><div class="pinfo"><div class="pname">🛡 休眠风险险</div><div class="pdetail">休眠故障·赔付¥800万</div></div><div class="pprice"><div class="price">¥5,600</div></div></div>
+<button class="btn btn-primary btn-block" onclick="addPurch('星际保险','¥1,200~12,800');alert('✅ 保单已激活');closeMod('modalInsurance')">🛡 选购并支付</button>
+</div></div>
+
+<!-- 弹窗：筛选 -->
+<div class="modal-overlay" id="modalFilter"><div class="modal">
+<button class="modal-close" onclick="closeMod('modalFilter')">✕</button><h3>🔍 航线筛选</h3>
+<div class="fg"><div class="flabel">出发星球</div><input class="finput" value="地球"></div>
+<div class="fg"><div class="flabel">目标星系</div><input class="finput" value="仙女座M31"></div>
+<div style="margin-bottom:10px"><div style="font-size:13px;color:var(--text2);margin-bottom:6px">引擎类型</div><span class="chip">聚变</span><span class="chip active">跃迁</span><span class="chip">超光速</span></div>
+<div style="display:flex;gap:10px;margin-top:14px">
+<button class="btn btn-outline btn-sm" style="flex:1" onclick="alert('已清除')">🔄 清除</button>
+<button class="btn btn-primary btn-sm" style="flex:1" onclick="alert('✅ 筛选完成，共5条结果');closeMod('modalFilter')">✅ 确认</button>
+</div>
+</div></div>
+
+<!-- 弹窗：天气/辐射 -->
+<div class="modal-overlay" id="modalWeather"><div class="modal"><button class="modal-close" onclick="closeMod('modalWeather')">✕</button><h3>🌌 星际天气</h3><div class="card-row"><span class="card-label">太阳活动</span><span class="card-value" style="color:var(--green)">平静</span></div><div class="card-row"><span class="card-label">跃迁通道</span><span class="card-value" style="color:var(--green)">畅通</span></div><div style="text-align:center;color:var(--green);margin-top:8px">✅ 全航线适航</div></div></div>
+<div class="modal-overlay" id="modalRadiation"><div class="modal"><button class="modal-close" onclick="closeMod('modalRadiation')">✕</button><h3>⚠ 辐射预警</h3><div class="data-panel"><div class="di"><div class="dv" style="color:var(--green)">0.8μSv/h</div><div class="dl">当前剂量</div></div><div class="di"><div class="dv" style="color:var(--green)">安全</div><div class="dl">评级</div></div></div></div></div>
+
+<!-- 弹窗：三体纪元选择 -->
+<div class="modal-overlay" id="modalEra"><div class="modal">
+<button class="modal-close" onclick="closeMod('modalEra')">✕</button>
+<h3>⚠ 检测到三体航线 · 选择目标纪元</h3>
+<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">你正在规划一条通往<b style="color:#fcd34d">比邻星·三体世界</b>的航线。该坐标的时空结构不稳定——需要选定一个<b style="color:#fcd34d">目标纪元</b>作为抵达时刻。</div>
+<div class="action-menu" id="eraOptions"></div>
+<div style="margin-top:12px"><button class="btn btn-outline btn-sm btn-block" onclick="closeMod('modalEra')">取消</button></div>
+</div></div>
+
+<!-- 成就提示 -->
+<div id="achieveToast" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:600;background:rgba(0,0,0,0.9);border:1px solid #fcd34d;border-radius:24px;padding:10px 20px;color:#fcd34d;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:all 0.5s ease;white-space:nowrap"></div>
+
+<!-- 随机事件弹窗 -->
+<div class="modal-overlay" id="modalEvent"><div class="modal" style="text-align:center">
+<h3 id="evtTitle">🌌 宇宙信号</h3><div id="evtBody" style="font-size:13px;color:var(--text2);line-height:1.7"></div>
+<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="closeMod('modalEvent')">收到</button>
+</div></div>
+
+<!-- 分享成就卡片弹窗 -->
+<div class="modal-overlay" id="modalShare"><div class="modal" style="text-align:center;background:linear-gradient(135deg,#0a0e17,#1a1030,#0a0e17);border:2px solid rgba(245,158,11,0.4)">
+<button class="modal-close" onclick="closeMod('modalShare')">✕</button>
+<div id="shareCard" style="padding:20px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1)"></div>
+<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="copyShareCard()">📋 截图分享</button>
+<div style="font-size:11px;color:var(--text3);margin-top:6px">长按截图保存到相册 · 分享到朋友圈</div>
+</div></div>
+
+<!-- 登录弹窗 -->
+<div class="modal-overlay" id="modalLogin"><div class="modal" style="text-align:center">
+<h3>🚀 欢迎来到高德星际</h3>
+<div style="font-size:13px;color:var(--text2);margin-bottom:16px">创建你的星际航行账号</div>
+<div class="fg"><div class="flabel">用户名</div><input class="finput" id="loginUser" placeholder="输入你的星际代号"></div>
+<div class="fg"><div class="flabel">密码</div><input class="finput" id="loginPass" type="password" placeholder="设置密码"></div>
+<button class="btn btn-primary btn-block" onclick="doLogin()">🚀 注册/登录</button>
+<div style="font-size:11px;color:var(--text3);margin-top:8px">数据存储在本地浏览器 · 不会上传到任何服务器</div>
+</div></div>
+
+<!-- 充值弹窗 -->
+<div class="modal-overlay" id="modalRecharge"><div class="modal" style="text-align:center">
+<button class="modal-close" onclick="closeMod('modalRecharge')">✕</button>
+<h3>💰 星际信用点充值</h3>
+<div style="font-size:13px;color:var(--text2);margin-bottom:4px">当前余额：<b style="color:#fcd34d" id="balDisplay">¥0</b></div>
+<div class="fg"><div class="flabel">充值金额（星际信用点）</div><input class="finput" id="rechargeAmount" type="number" placeholder="输入金额" value="1000000"></div>
+<div style="font-size:13px;color:var(--text2);margin:8px 0">选择支付方式</div>
+<div class="g2" style="margin-bottom:12px">
+<div class="svc" onclick="doRecharge('微付宝','🟢')" style="border:1px solid rgba(34,197,94,0.3)"><div class="si">🟢</div><div class="sn">微付宝</div><div style="font-size:10px;color:var(--text3)">WePayPal</div></div>
+<div class="svc" onclick="doRecharge('支信','🔵')" style="border:1px solid rgba(22,120,255,0.3)"><div class="si">🔵</div><div class="sn">支信</div><div style="font-size:10px;color:var(--text3)">ZhiPay</div></div>
+<div class="svc" onclick="doRecharge('星联Pay','🟣')" style="border:1px solid rgba(139,92,246,0.3)"><div class="si">🟣</div><div class="sn">星联Pay</div><div style="font-size:10px;color:var(--text3)">StarLink Pay</div></div>
+<div class="svc" onclick="doRecharge('云闪存','🟡')" style="border:1px solid rgba(245,158,11,0.3)"><div class="si">🟡</div><div class="sn">云闪存</div><div style="font-size:10px;color:var(--text3)">CloudFlash</div></div>
+</div>
+<div style="font-size:11px;color:var(--text3)">⚡ 模拟支付 · 即时到账 · 无上限 · 纯属娱乐</div>
+</div></div>
+
+<!-- 黑屏 -->
+<div class="black-screen" id="blackScreen"><div class="bs-icon">🧊</div><div class="bs-text" id="bsText">休眠中…</div></div>
+
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
