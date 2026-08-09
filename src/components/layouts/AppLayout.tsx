@@ -28,10 +28,11 @@ const EXPLORE_ITEMS = [
   { to: '/galaxy', label: '银河星图', icon: Orbit },
   { to: '/ship-designer', label: '飞船设计', icon: Wrench },
   { to: '/mementos', label: '探索纪念品', icon: Gift },
+  { to: '/exploration', label: '探索日志', icon: Compass },
 ];
 
 function isExplorePath(pathname: string) {
-  return ['/galaxy', '/ship-designer', '/mementos'].some((p) => pathname.startsWith(p));
+  return ['/galaxy', '/ship-designer', '/mementos', '/exploration'].some((p) => pathname.startsWith(p));
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {

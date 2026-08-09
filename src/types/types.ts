@@ -35,6 +35,23 @@ export interface Profile {
   interest: 'flight' | 'explore' | 'both' | null;
 }
 
+export interface PublicOrderItem {
+  id: string;
+  plan_name: string;
+  origin: string;
+  destination: string;
+  status: string;
+  price: number;
+  light_years: number;
+  created_at: string;
+}
+
+export interface PublicAchievementItem {
+  name: string;
+  description: string;
+  unlocked_at: string;
+}
+
 export interface PublicProfile {
   found: boolean;
   is_private: boolean;
@@ -49,6 +66,35 @@ export interface PublicProfile {
   achievements_count?: number;
   selected_ship?: string;
   sign_in_streak?: number;
+  online?: boolean;
+  interest?: string | null;
+  active_orders?: PublicOrderItem[];
+  achievements?: PublicAchievementItem[];
+}
+
+export interface AdminUserDetail {
+  found: boolean;
+  id?: string;
+  username?: string;
+  role?: string;
+  level?: number;
+  xp?: number;
+  balance?: number;
+  light_years_traveled?: number;
+  orders_completed?: number;
+  achievements_count?: number;
+  selected_ship?: string;
+  sign_in_streak?: number;
+  created_at?: string;
+  interest?: string | null;
+  banned?: boolean;
+  ban_reason?: string | null;
+  appeal_chances?: number;
+  appeal_count?: number;
+  is_private?: boolean;
+  online?: boolean;
+  active_orders?: PublicOrderItem[];
+  achievements?: PublicAchievementItem[];
 }
 
 export interface RiskItem {

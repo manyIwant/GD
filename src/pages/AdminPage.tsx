@@ -7,10 +7,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Users, Gauge, Star, Radio, Ban, ShieldCheck, Radar, AlertTriangle, Lock, Unlock } from 'lucide-react';
+import { Shield, Users, Gauge, Star, Radio, Ban, ShieldCheck, Radar, AlertTriangle, Lock, Unlock, Eye, Circle, Plane, Compass, Sparkles, Award, Rocket } from 'lucide-react';
 import { fmtPrice, fmtLY } from '@/data/pricing';
 import { toast } from 'sonner';
-import type { RiskItem } from '@/types/types';
+import { getAdminUserDetail } from '@/services/api';
+import type { RiskItem, AdminUserDetail, PublicOrderItem, PublicAchievementItem } from '@/types/types';
 
 interface AdminStats {
   user_count: number;
@@ -68,6 +69,20 @@ export default function AdminPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [banTarget, setBanTarget] = useState<AdminProfile | null>(null);
   const [banReason, setBanReason] = useState('');
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const openDetail = async (userId: string) => {
+    setDetailLoading(true);
+    try {
+      const d = await getAdminUserDetail(userId);
+      setDetail(d);
+    } catch (e: any) {
+      toast.error(e.message || '加载用户详情失败');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -245,18 +260,28 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 text-center whitespace-nowrap">
-                        {p.role !== 'admin' && (
+                        <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            variant={p.banned ? 'outline' : 'default'}
-                            disabled={actioningId === p.id}
-                            onClick={() => handleBanToggle(p)}
-                            className={`btn-mech text-xs ${p.banned ? 'text-green-400 hover:text-green-300' : 'bg-red-500/80 text-white hover:bg-red-500'}`}
+                            variant="outline"
+                            className="btn-mech text-xs"
+                            onClick={() => openDetail(p.id)}
                           >
-                            {p.banned ? <ShieldCheck className="w-3 h-3 mr-1" /> : <Ban className="w-3 h-3 mr-1" />}
-                            {p.banned ? '解封' : '封禁'}
+                            <Eye className="w-3 h-3 mr-1" />详情
                           </Button>
-                        )}
+                          {p.role !== 'admin' && (
+                            <Button
+                              size="sm"
+                              variant={p.banned ? 'outline' : 'default'}
+                              disabled={actioningId === p.id}
+                              onClick={() => handleBanToggle(p)}
+                              className={`btn-mech text-xs ${p.banned ? 'text-green-400 hover:text-green-300' : 'bg-red-500/80 text-white hover:bg-red-500'}`}
+                            >
+                              {p.banned ? <ShieldCheck className="w-3 h-3 mr-1" /> : <Ban className="w-3 h-3 mr-1" />}
+                              {p.banned ? '解封' : '封禁'}
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -389,6 +414,109 @@ export default function AdminPage() {
               确认封禁
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 用户详情弹窗（管理员可见全部信息，不可被隐私屏蔽） */}
+      <Dialog open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
+        <DialogContent className="max-w-[calc(100%-2rem)] md:max-w-lg bg-card border border-laser/40 max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Eye className="w-5 h-5 text-laser" /> 航行员详情
+            </DialogTitle>
+          </DialogHeader>
+          {detailLoading ? (
+            <div className="text-center py-10 text-laser animate-pulse font-mono-num">加载中…</div>
+          ) : detail && detail.found ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full border-2 border-laser/60 flex items-center justify-center bg-laser/10 text-xl shrink-0">
+                  {detail.username?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-foreground truncate">{detail.username}</span>
+                    {detail.online ? (
+                      <span className="flex items-center gap-1 text-[10px] text-green-400 shrink-0">
+                        <Circle className="w-2 h-2 fill-green-400 text-green-400" /> 在线
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                        <Circle className="w-2 h-2 fill-muted-foreground/40 text-muted-foreground/40" /> 离线
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-laser font-mono-num">Lv.{detail.level} · {detail.role === 'admin' ? '管理员' : '航行员'}</div>
+                </div>
+                {detail.banned && (
+                  <span className="text-[10px] text-red-400 border border-red-500/40 px-1.5 py-0.5 shrink-0">已封禁</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 border border-border bg-muted/10">
+                  <div className="text-sm font-bold font-mono-num text-laser">{fmtPrice(detail.balance ?? 0)}</div>
+                  <div className="text-[9px] text-muted-foreground">余额</div>
+                </div>
+                <div className="p-2 border border-border bg-muted/10">
+                  <div className="text-sm font-bold font-mono-num text-foreground">{detail.xp ?? 0}</div>
+                  <div className="text-[9px] text-muted-foreground">经验</div>
+                </div>
+                <div className="p-2 border border-border bg-muted/10">
+                  <div className="text-sm font-bold font-mono-num text-foreground">{fmtLY(detail.light_years_traveled ?? 0)}</div>
+                  <div className="text-[9px] text-muted-foreground">光年</div>
+                </div>
+              </div>
+
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div>完成航次：<span className="text-foreground font-mono-num">{detail.orders_completed ?? 0}</span></div>
+                <div>成就数量：<span className="text-foreground font-mono-num">{detail.achievements_count ?? 0}</span></div>
+                <div>连续签到：<span className="text-foreground font-mono-num">{detail.sign_in_streak ?? 0}</span></div>
+                {detail.interest && (
+                  <div>兴趣画像：<span className="text-foreground">{detail.interest === 'flight' ? '星际航线' : detail.interest === 'explore' ? '深空探索' : '两者兼顾'}</span></div>
+                )}
+                {detail.ban_reason && <div className="text-red-400">封禁原因：{detail.ban_reason}</div>}
+                <div>解封机会：<span className="text-foreground font-mono-num">{detail.appeal_chances ?? 0}/3</span> · 已申诉：<span className="text-foreground font-mono-num">{detail.appeal_count ?? 0}</span></div>
+              </div>
+
+              {detail.active_orders && detail.active_orders.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-2">
+                    <Rocket className="w-3.5 h-3.5 text-laser" /> 进行中的航行
+                  </div>
+                  <div className="space-y-1.5">
+                    {detail.active_orders.map((o: PublicOrderItem) => (
+                      <div key={o.id} className="flex items-center justify-between p-2 border border-border bg-muted/10">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-foreground truncate">{o.plan_name} · {o.origin} → {o.destination}</div>
+                          <div className="text-[10px] text-muted-foreground">{o.status === 'flying' ? '航行中' : '待登船'}</div>
+                        </div>
+                        <div className="text-xs font-mono-num text-laser shrink-0 ml-2">{fmtPrice(o.price)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {detail.achievements && detail.achievements.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-2">
+                    <Award className="w-3.5 h-3.5 text-laser" /> 已获得成就
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {detail.achievements.map((a: PublicAchievementItem) => (
+                      <div key={a.name} className="p-2 border border-border bg-muted/10">
+                        <div className="text-xs font-semibold text-foreground truncate">{a.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{a.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-10 text-muted-foreground">未找到该航行员</div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

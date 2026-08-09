@@ -80,16 +80,17 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      {/* 前三名 */}
+      {/* 前三名：银(左) - 金(中) - 铜(右) */}
       {entries.length >= 3 && (
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {entries.slice(0, 3).map((e, i) => {
-            const Icon = RANK_ICONS[i] || Trophy;
+          {[1, 0, 2].map((idx) => {
+            const e = entries[idx];
+            const Icon = RANK_ICONS[idx] || Trophy;
             return (
-              <div key={e.id} className={`border p-3 text-center ${i === 0 ? 'border-yellow-500/60 bg-yellow-950/20' : i === 1 ? 'border-gray-400/60 bg-gray-800/20' : 'border-orange-500/60 bg-orange-950/20'}`}>
-                <Icon className={`w-6 h-6 mx-auto mb-1 ${RANK_COLORS[i]}`} />
+              <div key={e.id} className={`border p-3 text-center ${idx === 0 ? 'border-yellow-500/60 bg-yellow-950/20' : idx === 1 ? 'border-gray-400/60 bg-gray-800/20' : 'border-orange-500/60 bg-orange-950/20'}`}>
+                <Icon className={`w-6 h-6 mx-auto mb-1 ${RANK_COLORS[idx]}`} />
                 <div className="text-xs font-bold text-foreground truncate">{e.username || '匿名'}</div>
-                <div className={`text-sm font-bold font-mono-num ${RANK_COLORS[i]}`}>
+                <div className={`text-sm font-bold font-mono-num ${RANK_COLORS[idx]}`}>
                   {CATEGORIES.find((c) => c.key === category)?.fmt(e)}
                 </div>
               </div>

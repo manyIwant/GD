@@ -3,11 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getPublicProfile } from '@/services/api';
 import { getShip } from '@/data/ships';
 import { fmtPrice, fmtLY } from '@/data/pricing';
-import type { PublicProfile } from '@/types/types';
+import type { PublicProfile, PublicOrderItem, PublicAchievementItem } from '@/types/types';
 import { HudPanel } from '@/components/common/Hud';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Lock, Rocket, Star, Award, Zap, Flame } from 'lucide-react';
+import { ArrowLeft, Lock, Rocket, Star, Award, Zap, Flame, Circle, Plane, Compass, Sparkles } from 'lucide-react';
 import Starfield from '@/components/common/Starfield';
+
+const INTEREST_LABEL: Record<string, string> = { flight: '星际航线', explore: '深空探索', both: '两者兼顾' };
+const INTEREST_ICON: Record<string, React.ReactNode> = {
+  flight: <Plane className="w-3 h-3" />,
+  explore: <Compass className="w-3 h-3" />,
+  both: <Sparkles className="w-3 h-3" />,
+};
 
 export default function ProfileViewPage() {
   const { userId } = useParams<{ userId: string }>();
@@ -64,8 +71,26 @@ export default function ProfileViewPage() {
               {profile.username?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-lg font-bold text-foreground truncate">{profile.username || '匿名航行员'}</div>
-              <div className="text-xs text-laser font-mono-num mt-0.5">Lv.{profile.level}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-lg font-bold text-foreground truncate">{profile.username || '匿名航行员'}</div>
+                {profile.online ? (
+                  <span className="flex items-center gap-1 text-[10px] text-green-400 shrink-0">
+                    <Circle className="w-2 h-2 fill-green-400 text-green-400" /> 在线
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                    <Circle className="w-2 h-2 fill-muted-foreground/40 text-muted-foreground/40" /> 离线
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-laser font-mono-num">Lv.{profile.level}</span>
+                {profile.interest && (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground border border-border px-1.5 py-0.5">
+                    {INTEREST_ICON[profile.interest]}{INTEREST_LABEL[profile.interest]}
+                  </span>
+                )}
+              </div>
             </div>
             {profile.is_private && (
               <div className="flex items-center gap-1 text-[10px] text-muted-foreground border border-border px-2 py-1 shrink-0">
@@ -127,6 +152,43 @@ export default function ProfileViewPage() {
                   </div>
                 </HudPanel>
               </div>
+
+              {/* 进行中的订单 */}
+              {profile.active_orders && profile.active_orders.length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-2">
+                    <Rocket className="w-3.5 h-3.5 text-laser" /> 进行中的航行
+                  </div>
+                  <div className="space-y-2">
+                    {profile.active_orders.map((o: PublicOrderItem) => (
+                      <div key={o.id} className="flex items-center justify-between p-2 border border-border bg-muted/10">
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-foreground truncate">{o.plan_name} · {o.origin} → {o.destination}</div>
+                          <div className="text-[10px] text-muted-foreground">{o.status === 'flying' ? '航行中' : '待登船'}</div>
+                        </div>
+                        <div className="text-xs font-mono-num text-laser shrink-0 ml-2">{fmtPrice(o.price)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 已获得的成就 */}
+              {profile.achievements && profile.achievements.length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-foreground mb-2">
+                    <Award className="w-3.5 h-3.5 text-laser" /> 已获得成就
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {profile.achievements.map((a: PublicAchievementItem) => (
+                      <div key={a.name} className="p-2 border border-border bg-muted/10">
+                        <div className="text-xs font-semibold text-foreground truncate">{a.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{a.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="text-[10px] text-muted-foreground/50 font-mono-num text-center">
                 加入星际客运于 {profile.created_at ? new Date(profile.created_at).toLocaleDateString('zh-CN') : '未知'}

@@ -50,15 +50,18 @@ export default function SpinWheelPage() {
 
     try {
       const res = await spinWheel(SPIN_COST);
-      setResult({ label: res.label, icon: res.icon });
-      toast.success(`🎉 ${res.label}`);
+      // 等待圆盘动画（4s）完全停止后再显示结果
+      setTimeout(() => {
+        setResult({ label: res.label, icon: res.icon });
+        toast.success(`🎉 ${res.label}`);
+        setSpinning(false);
+      }, 4200);
       await refreshProfile();
       await loadRecords();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '抽奖失败';
       toast.error(msg);
-    } finally {
-      setTimeout(() => setSpinning(false), 4200);
+      setSpinning(false);
     }
   };
 

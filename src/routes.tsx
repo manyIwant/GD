@@ -16,6 +16,7 @@ import AdminPage from './pages/AdminPage';
 import StarMapPage from './pages/StarMapPage';
 import ShipDesignerPage from './pages/ShipDesignerPage';
 import MementosPage from './pages/MementosPage';
+import ExplorationLogPage from './pages/ExplorationLogPage';
 import SpinWheelPage from './pages/SpinWheelPage';
 import EventsPage from './pages/EventsPage';
 import BannedPage from './pages/BannedPage';
@@ -46,6 +47,7 @@ export const routes: RouteConfig[] = [
   { name: '银河星图', path: '/galaxy', element: <StarMapPage /> },
   { name: '飞船设计', path: '/ship-designer', element: <ShipDesignerPage /> },
   { name: '探索纪念品', path: '/mementos', element: <MementosPage /> },
+  { name: '探索日志', path: '/exploration', element: <ExplorationLogPage /> },
   { name: '幸运转盘', path: '/spin', element: <SpinWheelPage /> },
   { name: '限时活动', path: '/events', element: <EventsPage /> },
   { name: '航行员档案', path: '/profile/:userId', element: <ProfileViewPage /> },

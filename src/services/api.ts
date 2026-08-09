@@ -2,7 +2,7 @@
 import { supabase } from '@/db/supabase';
 import type {
   Profile, OrderRow, AchievementRow, DailyTaskRow, FlightLogRow, UnlockedShipRow, LeaderboardEntry,
-  ShipProgressRow, SpinRecordRow, PublicProfile, RiskItem,
+  ShipProgressRow, SpinRecordRow, PublicProfile, RiskItem, AdminUserDetail,
 } from '@/types/types';
 
 // ===== Auth =====
@@ -282,7 +282,7 @@ export async function fetchSpinRecords(userId: string, limit: number = 10): Prom
 }
 
 // ===== 封号申诉 / 公开资料 / 风控 =====
-export async function appealUnban(answers: boolean[]): Promise<{ success: boolean; remaining: number }> {
+export async function appealUnban(answers: { id: number; answer: boolean }[]): Promise<{ success: boolean; remaining: number }> {
   const { data, error } = await supabase.rpc('appeal_unban', { p_answers: answers });
   if (error) throw error;
   return data as { success: boolean; remaining: number };
@@ -314,4 +314,29 @@ export async function banUserWithReason(userId: string, reason: string): Promise
 export async function setInterest(userId: string, interest: 'flight' | 'explore' | 'both'): Promise<void> {
   const { error } = await supabase.from('profiles').update({ interest }).eq('id', userId);
   if (error) throw error;
+}
+
+// ===== 限时活动（云端防重复） =====
+export async function claimEventReward(eventId: string, balance: number, xp: number): Promise<{ success: boolean; reason?: string }> {
+  const { data, error } = await supabase.rpc('claim_event_reward_atomic', { p_event_id: eventId, p_balance: balance, p_xp: xp });
+  if (error) throw error;
+  return data as { success: boolean; reason?: string };
+}
+
+export async function getClaimedEvents(): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_claimed_events');
+  if (error) throw error;
+  return Array.isArray(data) ? (data as string[]) : [];
+}
+
+// ===== 管理员查看用户详情（不可屏蔽） =====
+export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail | null> {
+  const { data, error } = await supabase.rpc('get_admin_user_detail', { p_user_id: userId });
+  if (error) throw error;
+  return (data as AdminUserDetail) || null;
+}
+
+// ===== 在线心跳 =====
+export async function touchPresence(): Promise<void> {
+  await supabase.rpc('touch_presence');
 }

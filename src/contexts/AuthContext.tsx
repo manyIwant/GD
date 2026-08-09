@@ -97,6 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // 在线心跳：登录后定期更新 last_seen_at（用于在线状态展示）
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc('touch_presence');
+    const timer = setInterval(() => {
+      supabase.rpc('touch_presence');
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [user]);
+
   const signInWithUsername = async (username: string, password: string) => {
     try {
       // 逐一尝试候选邮箱，兼容旧版字面邮箱账号与新版哈希邮箱账号

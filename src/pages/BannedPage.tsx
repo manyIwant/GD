@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { appealUnban } from '@/services/api';
-import { QUIZ_QUESTIONS } from '@/data/quizQuestions';
+import { fetchRandomQuiz } from '@/data/quizQuestions';
+import type { AppealQuestion } from '@/data/quizQuestions';
 import { ShieldAlert, Gavel, AlertTriangle, CheckCircle2, XCircle, RotateCcw, LogOut } from 'lucide-react';
 import Starfield from '@/components/common/Starfield';
 
@@ -14,6 +15,7 @@ export default function BannedPage() {
   const { profile, signOut, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<'notice' | 'quiz' | 'result'>('notice');
+  const [questions, setQuestions] = useState<AppealQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ pass: boolean; remaining: number } | null>(null);
@@ -23,17 +25,27 @@ export default function BannedPage() {
     if (profile && !profile.banned) navigate('/', { replace: true });
   }, [profile, navigate]);
 
+  const loadQuiz = useCallback(async () => {
+    try {
+      const q = await fetchRandomQuiz();
+      setQuestions(q);
+      setAnswers({});
+    } catch {
+      toast.error('题库加载失败，请重试');
+    }
+  }, []);
+
   const bannedAt = profile?.banned_at ? new Date(profile.banned_at) : null;
   const remaining = profile?.appeal_chances ?? 0;
 
-  const allAnswered = QUIZ_QUESTIONS.every((q) => answers[q.id] !== undefined);
+  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.id] !== undefined);
 
   const submit = async () => {
     if (!allAnswered) { toast.error('请完成所有题目'); return; }
     setSubmitting(true);
     try {
-      const boolAnswers = QUIZ_QUESTIONS.map((q) => answers[q.id] === 'true');
-      const res = await appealUnban(boolAnswers);
+      const payload = questions.map((q) => ({ id: q.id, answer: answers[q.id] === 'true' }));
+      const res = await appealUnban(payload);
       setResult({ pass: true, remaining: res.remaining });
       setStep('result');
       await refreshProfile();
@@ -115,7 +127,7 @@ export default function BannedPage() {
               <div className="flex gap-3">
                 {remaining > 0 ? (
                   <Button className="flex-1 btn-mech bg-amber-500/80 text-white hover:bg-amber-500 font-bold"
-                    onClick={() => setStep('quiz')}>
+                    onClick={() => { loadQuiz(); setStep('quiz'); }}>
                     申请答题解封
                   </Button>
                 ) : (
@@ -134,15 +146,22 @@ export default function BannedPage() {
           {step === 'quiz' && (
             <div className="p-6 space-y-5">
               <div className="text-xs text-muted-foreground text-pretty">
-                请完成以下合规问卷（共 {QUIZ_QUESTIONS.length} 题，全部答对方可解封）。本次为第
+                请认真完成以下合规问卷（共 {questions.length} 题，全部答对方可解封）。本次为第
                 <span className="text-amber-400 font-bold"> {4 - remaining} </span>
                 次解封，剩余
                 <span className="text-amber-400 font-bold"> {remaining} </span>
                 次机会。
               </div>
 
-              <div className="space-y-4 max-h-[52vh] overflow-y-auto pr-1">
-                {QUIZ_QUESTIONS.map((q, idx) => (
+              <div className="border border-amber-500/30 bg-amber-500/5 p-2.5 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span className="text-[11px] text-muted-foreground text-pretty">
+                  题目随机抽取，请逐题认真作答。任何一题答错均视为未通过，将消耗一次解封机会。
+                </span>
+              </div>
+
+              <div className="space-y-4 max-h-[46vh] overflow-y-auto pr-1">
+                {questions.map((q, idx) => (
                   <div key={q.id} className="border border-border/60 bg-background/40 p-3">
                     <div className="text-sm text-foreground mb-2 text-pretty">
                       <span className="text-laser font-bold mr-1">{idx + 1}.</span>{q.question}
@@ -202,7 +221,7 @@ export default function BannedPage() {
                     你的答卷存在错误，请重新作答。剩余解封机会：{result.remaining} / 3。
                   </p>
                   <Button className="w-full btn-mech bg-amber-500/80 text-white hover:bg-amber-500 font-bold"
-                    onClick={() => { setResult(null); setStep('quiz'); }}>
+                    onClick={() => { setResult(null); loadQuiz(); setStep('quiz'); }}>
                     <RotateCcw className="w-4 h-4 mr-1" /> 重新答题
                   </Button>
                 </>

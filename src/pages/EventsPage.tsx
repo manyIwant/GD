@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/db/supabase';
+import { claimEventReward, getClaimedEvents } from '@/services/api';
 import { HudPanel, AlertBar } from '@/components/common/Hud';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -83,34 +83,34 @@ function getEvents(): EventDef[] {
 export default function EventsPage() {
   const { profile, refreshProfile } = useAuth();
   const events = useMemo(getEvents, []);
-  const claimed = useMemo(() => {
-    // 简单本地标记已领取（活动奖励为一次性）
-    try {
-      return new Set(JSON.parse(localStorage.getItem('claimed_events') || '[]'));
-    } catch {
-      return new Set<string>();
-    }
-  }, []);
+  const [claimed, setClaimed] = useState<Set<string>>(new Set());
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    getClaimedEvents()
+      .then((ids) => setClaimed(new Set(ids)))
+      .catch(() => {});
+  }, [profile]);
 
   const handleClaim = async (ev: EventDef) => {
-    if (claimed.has(ev.id)) {
-      toast.info('该活动奖励已领取');
-      return;
-    }
+    if (claimed.has(ev.id) || claimingId) return;
+    setClaimingId(ev.id);
     try {
-      const { error } = await supabase.rpc('claim_event_reward', {
-        p_balance: ev.rewardBalance,
-        p_xp: ev.rewardXp,
-      });
-      if (error) throw error;
-      const next = new Set(claimed);
-      next.add(ev.id);
-      localStorage.setItem('claimed_events', JSON.stringify([...next]));
+      const res = await claimEventReward(ev.id, ev.rewardBalance, ev.rewardXp);
+      if (!res.success) {
+        toast.info('该活动奖励已领取');
+        setClaimed((prev) => new Set(prev).add(ev.id));
+        return;
+      }
+      setClaimed((prev) => new Set(prev).add(ev.id));
       toast.success(`🎉 已领取：${ev.reward}`);
       await refreshProfile();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '领取失败';
       toast.error(msg);
+    } finally {
+      setClaimingId(null);
     }
   };
 
@@ -159,11 +159,11 @@ export default function EventsPage() {
                 <div className="shrink-0">
                   <Button
                     size="sm"
-                    disabled={!ev.active || claimed.has(ev.id)}
+                    disabled={!ev.active || claimed.has(ev.id) || claimingId === ev.id}
                     onClick={() => handleClaim(ev)}
                     className="btn-mech bg-laser text-primary-foreground hover:bg-laser/90 disabled:opacity-40"
                   >
-                    {claimed.has(ev.id) ? '已领取' : '领取'}
+                    {claimed.has(ev.id) ? '已领取' : claimingId === ev.id ? '领取中…' : '领取'}
                   </Button>
                 </div>
               </div>
