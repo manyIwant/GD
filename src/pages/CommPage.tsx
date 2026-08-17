@@ -3,7 +3,6 @@ import { useGameStore } from '@/hooks/useGameStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { HudPanel, AlertBar } from '@/components/common/Hud';
-import RechargeDialog from '@/components/common/RechargeDialog';
 import DriftBottleDialog from '@/components/game/DriftBottleDialog';
 import { fmtPrice, fmtLY } from '@/data/pricing';
 import { Radio, Send, Zap, Bell, Wallet, Waves, Heart, Inbox, Ship } from 'lucide-react';
@@ -23,9 +22,8 @@ export default function CommPage() {
   const store = useGameStore();
   const { profile } = useAuth();
   const { inboxBottles, myBottles, sendBottle, replyBottle, likeBottle, loadBottles } = store;
-  const [rechargeOpen, setRechargeOpen] = useState(false);
-  const [msg, setMsg] = useState('');
   const [tab, setTab] = useState<'inbox' | 'sent'>('inbox');
+  const [msg, setMsg] = useState('');
   const [selectedBottle, setSelectedBottle] = useState<DriftBottle | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -49,9 +47,7 @@ export default function CommPage() {
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Radio className="w-5 h-5 text-laser animate-pulse" /> 通讯中心
         </h1>
-        <Button size="sm" className="btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={() => setRechargeOpen(true)}>
-          <Zap className="w-3.5 h-3.5 mr-1" /> 充值
-        </Button>
+        <span className="text-xs text-muted-foreground">漂流瓶 · 星际讯息</span>
       </div>
 
       {/* 钱包概览 */}
@@ -142,7 +138,6 @@ export default function CommPage() {
         </div>
       </HudPanel>
 
-      <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
       <DriftBottleDialog
         bottle={selectedBottle}
         open={dialogOpen}

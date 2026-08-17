@@ -128,6 +128,11 @@ export default function MonitorPage() {
     if (!calc || !order) return;
     if (calc.progress >= 100 && order.status === 'flying') {
       setArriveOpen(true);
+      // 抵达后清除休眠状态，避免出现"紧急唤醒"等不合逻辑的入口
+      setHib(false);
+      setHibStart(null);
+      setHibRate(1);
+      setHibMode(null);
       return;
     }
     // 浅度休眠到达目标站点 → 自动唤醒
@@ -184,6 +189,7 @@ export default function MonitorPage() {
   const m = Math.floor((remainingMs % 3600000) / 60000);
   const s = Math.floor((remainingMs % 60000) / 1000);
   const speedC = (0.72 + progress / 100 * 0.2).toFixed(2);
+  const arrived = progress >= 100;
 
   // 航行日志索引（随进度变化）
   const logIdx = Math.min(Math.floor(progress / 20), logLines.length - 1);
@@ -278,7 +284,7 @@ export default function MonitorPage() {
         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Radio className="w-5 h-5 text-laser animate-pulse" /> 实时监控
         </h1>
-        <span className={`text-xs font-bold ${hib ? 'text-purple-400' : 'text-laser'}`}>{hib ? '💤 休眠中' : '⏱ 航行中'}</span>
+        <span className={`text-xs font-bold ${arrived ? 'text-green-400' : hib ? 'text-purple-400' : 'text-laser'}`}>{arrived ? '🛬 已抵达' : hib ? '💤 休眠中' : '⏱ 航行中'}</span>
       </div>
 
       {/* 倒计时 */}
@@ -313,7 +319,7 @@ export default function MonitorPage() {
           <div className="grid grid-cols-3 gap-2">
             <DataItem label="航速" value={speedC} unit="c" accent />
             <DataItem label="进度" value={progress.toFixed(1)} unit="%" />
-            <DataItem label="辐射" value={(0.5 + Math.random() * 0.6).toFixed(1)} unit="μSv" />
+            <DataItem label="辐射" value={(0.4 + (progress / 100) * 0.7).toFixed(1)} unit="μSv" />
           </div>
         </div>
       </HudPanel>
@@ -327,12 +333,35 @@ export default function MonitorPage() {
         <p className="text-[11px] md:text-xs text-muted-foreground italic leading-relaxed text-pretty">{logLine}</p>
       </div>
 
-      <AlertBar tone="info" >
-        <div className="flex items-center justify-between">
-          <span>下一站：<b className="text-foreground">{nwp.n}</b></span>
-          <span className="text-muted-foreground">通讯延迟 ~{(progress * 12000).toFixed(0)} 年</span>
-        </div>
-      </AlertBar>
+      {arrived ? (
+        <AlertBar tone="success">
+          <div className="flex items-center justify-between">
+            <span>本次航行已抵达终点：<b className="text-foreground">{order.destination}</b></span>
+            <span className="text-muted-foreground">点击下方"查看星际明信片"完成结算</span>
+          </div>
+        </AlertBar>
+      ) : (
+        <AlertBar tone="info" >
+          <div className="flex items-center justify-between">
+            <span>下一站：<b className="text-foreground">{nwp.n}</b></span>
+            <span className="text-muted-foreground">通讯延迟 ~{(progress * 12000).toFixed(0)} 年</span>
+          </div>
+        </AlertBar>
+      )}
+
+      {/* 抵达结算面板（常驻，即使关闭弹窗也可完成） */}
+      {arrived && (
+        <HudPanel title="已抵达目的地" className="mt-4">
+          <div className="p-5 text-center">
+            <div className="text-5xl mb-2">🛬</div>
+            <div className="text-base font-bold text-green-400">已抵达 {order.destination}</div>
+            <div className="text-xs text-muted-foreground mt-1 mb-4">航行已完成，点击下方按钮生成星际明信片并结算本次航行。</div>
+            <Button className="w-full btn-mech bg-laser text-primary-foreground hover:bg-laser/90" onClick={handleArrive}>
+              <Sparkles className="w-4 h-4 mr-1" /> 查看星际明信片
+            </Button>
+          </div>
+        </HudPanel>
+      )}
 
       {/* 航行操作 */}
       {!hib && progress < 100 && (

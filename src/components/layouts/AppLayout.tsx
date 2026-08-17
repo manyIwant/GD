@@ -1,8 +1,10 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import RechargeDialog from '@/components/common/RechargeDialog';
+import EasterEggDialog from '@/components/common/EasterEggDialog';
 import { Menu, Rocket, Gauge, LogOut, Zap, Trophy, Ship, BookOpen, MapPin, Radio, Award, Target, Shield, Orbit, Compass, Wrench, Gift, ChevronRight, Dices, CalendarClock } from 'lucide-react';
 import { fmtPrice } from '@/data/pricing';
 
@@ -40,7 +42,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [easterOpen, setEasterOpen] = useState(false);
+  const brandClickRef = useRef(0);
   const [mode, setMode] = useState<'nav' | 'explore'>(() => (isExplorePath(location.pathname) ? 'explore' : 'nav'));
+
+  const onBrandClick = () => {
+    brandClickRef.current += 1;
+    if (brandClickRef.current >= 5) {
+      brandClickRef.current = 0;
+      setEasterOpen(true);
+    }
+  };
 
   const switchMode = (m: 'nav' | 'explore') => {
     setMode(m);
@@ -134,7 +147,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-60 shrink-0 border-r border-border bg-sidebar/80 backdrop-blur-sm sticky top-0 h-screen z-30">
         <div className="px-4 py-4 border-b border-border flex items-center gap-2">
           <div className="w-2 h-2 bg-laser laser-line" />
-          <span className="font-bold text-foreground tracking-wider">高德星际</span>
+          <button onClick={onBrandClick} className="font-bold text-foreground tracking-wider btn-mech" title="高德星际">
+            高德星际
+          </button>
           <span className="ml-auto text-[9px] text-muted-foreground font-mono-num">v2.0</span>
         </div>
 
@@ -199,19 +214,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Sheet>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-laser laser-line" />
-            <span className="font-bold text-sm tracking-wider">高德星际</span>
+            <button onClick={onBrandClick} className="font-bold text-sm tracking-wider btn-mech" title="高德星际">
+              高德星际
+            </button>
             <ChevronRight className="w-3 h-3 text-muted-foreground" />
             <span className={`text-xs font-bold ${mode === 'explore' ? 'text-cyan-400' : 'text-laser'}`}>
               {mode === 'explore' ? '个人探索' : '星际航行'}
             </span>
           </div>
-          <Button asChild size="sm" className="btn-mech bg-laser text-primary-foreground hover:bg-laser/90">
-            <a href="/GD/"><Zap className="w-3 h-3 mr-1" />充值</a>
-          </Button>
         </header>
+
+        {/* 全局充值按钮（任意页面右上角可见） */}
+        <Button
+          onClick={() => setRechargeOpen(true)}
+          className="fixed top-3 right-3 z-40 btn-mech bg-laser text-primary-foreground hover:bg-laser/90 shadow-[0_0_20px_hsl(var(--laser)/0.5)] h-9 px-3"
+        >
+          <Zap className="w-4 h-4 mr-1" /> 充值
+        </Button>
 
         <main className="flex-1 relative z-10">{children}</main>
       </div>
+
+      <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
+      <EasterEggDialog open={easterOpen} onClose={() => setEasterOpen(false)} />
     </div>
   );
 }

@@ -145,6 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        // 将原始用户名写入元数据，供触发器正确保存中文名
+        options: { data: { username: username.trim() } },
       });
 
       if (error) throw error;

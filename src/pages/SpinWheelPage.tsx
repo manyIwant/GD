@@ -12,7 +12,7 @@ const SEGMENTS = [
   { label: '信用点 +1000', color: '#3b82f6', icon: '💎' },
   { label: '经验值 +200', color: '#eab308', icon: '⭐' },
   { label: '信用点 +200', color: '#06b6d4', icon: '🪙' },
-  { label: '大奖 +5000', color: '#ef4444', icon: '🏆' },
+  { label: '大奖！信用点 +5000', color: '#ef4444', icon: '🏆' },
   { label: '谢谢参与 +50', color: '#8b5cf6', icon: '🎁' },
 ];
 
@@ -43,13 +43,24 @@ export default function SpinWheelPage() {
     }
     setResult(null);
     setSpinning(true);
-    // 随机旋转角度
-    const extra = 360 * (5 + Math.floor(Math.random() * 3));
-    const offset = Math.floor(Math.random() * 360);
-    setRotation((prev) => prev + extra + offset);
 
     try {
       const res = await spinWheel(SPIN_COST);
+      // 依据服务端结果定位中奖扇区，让指针精确停在该扇区
+      const winIndex = Math.max(
+        0,
+        SEGMENTS.findIndex((s) => s.icon === res.icon && s.label === res.label),
+      );
+      const segAngle = 360 / SEGMENTS.length;
+      const mid = winIndex * segAngle + segAngle / 2; // 扇区中心角（顺时针，自顶部起）
+      const jitter = (Math.random() - 0.5) * (segAngle * 0.5); // 停在扇区内随机位置，更自然
+      const targetMod = (360 - (mid + jitter)) % 360;
+      const currentMod = ((rotation % 360) + 360) % 360;
+      let delta = targetMod - currentMod;
+      if (delta < 0) delta += 360;
+      const extraTurns = 360 * (5 + Math.floor(Math.random() * 3));
+      setRotation((prev) => prev + extraTurns + delta);
+
       // 等待圆盘动画（4s）完全停止后再显示结果
       setTimeout(() => {
         setResult({ label: res.label, icon: res.icon });
