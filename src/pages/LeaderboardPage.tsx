@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HudPanel, DataItem, EmptyState } from '@/components/common/Hud';
 import { Button } from '@/components/ui/button';
-import { fetchLeaderboard, fetchUserRank } from '@/services/api';
+import { fetchLeaderboard } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { fmtLY } from '@/data/pricing';
 import type { LeaderboardEntry } from '@/types/types';
@@ -33,13 +33,17 @@ export default function LeaderboardPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const [list, rank] = await Promise.all([
-          fetchLeaderboard(category, 50),
-          user ? fetchUserRank(user.id, category) : Promise.resolve(null),
-        ]);
+        // 一次性拉取较多数据，既用于排名也用于展示，确保完成过航行的玩家都能上榜
+        const all = await fetchLeaderboard(category, 1000);
+        const myEntry = user ? all.find((e) => e.id === user.id) ?? null : null;
+        const top = all.slice(0, 100);
+        // 若当前玩家不在前 100 名，则追加显示，保证累计光年可见
+        const display = myEntry && !top.find((e) => e.id === myEntry.id)
+          ? [...top, myEntry]
+          : top;
         if (!cancel) {
-          setEntries(list);
-          setMyRank(rank);
+          setEntries(display);
+          setMyRank(myEntry ? myEntry.rank : null);
         }
       } catch (e) {
         console.error(e);

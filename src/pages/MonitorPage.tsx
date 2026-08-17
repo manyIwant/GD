@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { HudPanel, DataItem, LocationHero, EmptyState, AlertBar } from '@/components/common/Hud';
 import MiniGame from '@/components/game/MiniGame';
+import SpecialEventModal from '@/components/game/SpecialEventModal';
 import { pickCosmicEvent, pickMiniGame } from '@/data/cosmicEvents';
 import type { MiniGameType } from '@/data/cosmicEvents';
 import type { EventChoice } from '@/data/cosmicEvents';
@@ -52,11 +53,31 @@ export default function MonitorPage() {
 
   // 抵达弹窗
   const [arriveOpen, setArriveOpen] = useState(false);
+  const [specialEventOpen, setSpecialEventOpen] = useState(false);
+  const specialCheckedRef = useRef(false);
+  const hibernationClickedRef = useRef(false);
 
   useEffect(() => {
     if (order?.status === 'flying' && vTs === null) setVTs(Date.now());
     if (!order || order.status !== 'flying') { setVTs(null); setHib(false); setHibStart(null); setHibMode(null); setHibRate(1); }
   }, [order, vTs]);
+
+  // 登船后 3 秒内判定特殊事件（仅当玩家未点击任何休眠时）
+  useEffect(() => {
+    if (!order || order.status !== 'flying') {
+      specialCheckedRef.current = false;
+      hibernationClickedRef.current = false;
+      return;
+    }
+    if (specialCheckedRef.current) return;
+    specialCheckedRef.current = true;
+    const timer = setTimeout(() => {
+      if (!hibernationClickedRef.current && Math.random() < 0.5) {
+        setSpecialEventOpen(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [order?.id, order?.status]);
 
   // 主刷新循环（100ms 平滑刷新，确保休眠加速可见）
   useEffect(() => {
@@ -169,6 +190,7 @@ export default function MonitorPage() {
   const logLine = logLines[logIdx];
 
   const startHibernation = (mode: 'full' | 'next') => {
+    hibernationClickedRef.current = true;
     setHibMode(mode);
     setHibCountdown(3);
   };
@@ -423,6 +445,8 @@ export default function MonitorPage() {
         riskBalance={pendingChoice?.riskBalance}
         onClose={handleMiniGameClose}
       />
+
+      <SpecialEventModal open={specialEventOpen} onClose={() => setSpecialEventOpen(false)} />
 
       {/* 抵达弹窗 */}
       <Dialog open={arriveOpen} onOpenChange={setArriveOpen}>

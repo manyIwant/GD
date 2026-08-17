@@ -3,6 +3,7 @@ import { supabase } from '@/db/supabase';
 import type {
   Profile, OrderRow, AchievementRow, DailyTaskRow, FlightLogRow, UnlockedShipRow, LeaderboardEntry,
   ShipProgressRow, SpinRecordRow, PublicProfile, RiskItem, AdminUserDetail,
+  ChallengeDef, ActiveChallenge, ChallengeHistoryRow, DriftBottle,
 } from '@/types/types';
 
 // ===== Auth =====
@@ -339,4 +340,98 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
 // ===== 在线心跳 =====
 export async function touchPresence(): Promise<void> {
   await supabase.rpc('touch_presence');
+}
+
+// ===== 挑战系统 =====
+export async function fetchChallengeDefs(): Promise<ChallengeDef[]> {
+  const { data, error } = await supabase.from('challenge_defs').select('*').order('sort_order', { ascending: true });
+  if (error) throw error;
+  return Array.isArray(data) ? (data as ChallengeDef[]) : [];
+}
+
+export async function getActiveChallenge(): Promise<ActiveChallenge | null> {
+  const { data, error } = await supabase.rpc('get_active_challenge');
+  if (error) throw error;
+  return (data as ActiveChallenge) || null;
+}
+
+export async function acceptChallenge(code: string): Promise<ActiveChallenge> {
+  const { data, error } = await supabase.rpc('accept_challenge', { p_code: code });
+  if (error) throw error;
+  return data as ActiveChallenge;
+}
+
+export async function settleChallenge(challengeId: string): Promise<{ success: boolean; status: string; progress: number; goal_target: number; reward_xp: number; reward_balance: number; penalty_xp: number; penalty_balance: number; already_settled?: boolean }> {
+  const { data, error } = await supabase.rpc('settle_challenge', { p_challenge_id: challengeId });
+  if (error) throw error;
+  return data as any;
+}
+
+export async function fetchChallengeHistory(limit: number = 20): Promise<ChallengeHistoryRow[]> {
+  const { data, error } = await supabase.from('user_challenges').select('*').neq('status', 'active').order('settled_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return Array.isArray(data) ? (data as ChallengeHistoryRow[]) : [];
+}
+
+// ===== 漂流瓶系统 =====
+export async function sendBottle(content: string): Promise<{ id: string; content: string; created_at: string; likes: number }> {
+  const { data, error } = await supabase.rpc('send_bottle', { p_content: content });
+  if (error) throw error;
+  return data as { id: string; content: string; created_at: string; likes: number };
+}
+
+export async function replyBottle(parentId: string, content: string): Promise<{ id: string; content: string; created_at: string }> {
+  const { data, error } = await supabase.rpc('reply_bottle', { p_parent_id: parentId, p_content: content });
+  if (error) throw error;
+  return data as { id: string; content: string; created_at: string };
+}
+
+export async function likeBottle(bottleId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('like_bottle', { p_bottle_id: bottleId });
+  if (error) throw error;
+  return (data as { likes: number })?.likes ?? 0;
+}
+
+// 收件箱：来自其他玩家的漂流瓶（随机抽取，模拟"有概率被接收到"）
+export async function fetchInboxBottles(userId: string, limit: number = 50): Promise<DriftBottle[]> {
+  const { data, error } = await supabase
+    .from('drift_bottles')
+    .select('*, sender:profiles!drift_bottles_sender_id_fkey(username)')
+    .is('parent_id', null)
+    .neq('sender_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((r: any) => ({ ...r, sender_username: r.sender?.username ?? null, sender: undefined }));
+}
+
+// 我发出的漂流瓶
+export async function fetchMyBottles(userId: string, limit: number = 50): Promise<DriftBottle[]> {
+  const { data, error } = await supabase
+    .from('drift_bottles')
+    .select('*, sender:profiles!drift_bottles_sender_id_fkey(username)')
+    .is('parent_id', null)
+    .eq('sender_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((r: any) => ({ ...r, sender_username: r.sender?.username ?? null, sender: undefined }));
+}
+
+// 漂流瓶详情（含回复）
+export async function fetchBottleThread(parentId: string): Promise<{ bottle: DriftBottle | null; replies: DriftBottle[] }> {
+  const { data, error } = await supabase
+    .from('drift_bottles')
+    .select('*, sender:profiles!drift_bottles_sender_id_fkey(username)')
+    .or(`id.eq.${parentId},parent_id.eq.${parentId}`)
+    .order('created_at', { ascending: true })
+    .limit(100);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data : [];
+  const mapped = rows.map((r: any) => ({ ...r, sender_username: r.sender?.username ?? null, sender: undefined }));
+  const bottle = mapped.find((b) => b.id === parentId) ?? null;
+  const replies = mapped.filter((b) => b.parent_id === parentId);
+  return { bottle, replies };
 }

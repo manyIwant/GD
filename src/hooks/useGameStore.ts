@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/services/api';
-import type { OrderRow, AchievementRow, DailyTaskRow, FlightLogRow, UnlockedShipRow } from '@/types/types';
+import type { OrderRow, AchievementRow, DailyTaskRow, FlightLogRow, UnlockedShipRow, ChallengeDef, ActiveChallenge, ChallengeHistoryRow, DriftBottle } from '@/types/types';
 import { getShip } from '@/data/ships';
 import { getPlan } from '@/data/plans';
 import { calcPrice, getLightYears, getServiceTotal, ONBOARD_SERVICES } from '@/data/pricing';
@@ -16,6 +16,11 @@ export function useGameStore() {
   const [dailyTasks, setDailyTasks] = useState<DailyTaskRow[]>([]);
   const [flightLogs, setFlightLogs] = useState<FlightLogRow[]>([]);
   const [unlockedShips, setUnlockedShips] = useState<UnlockedShipRow[]>([]);
+  const [challengeDefs, setChallengeDefs] = useState<ChallengeDef[]>([]);
+  const [activeChallenge, setActiveChallenge] = useState<ActiveChallenge | null>(null);
+  const [challengeHistory, setChallengeHistory] = useState<ChallengeHistoryRow[]>([]);
+  const [inboxBottles, setInboxBottles] = useState<DriftBottle[]>([]);
+  const [myBottles, setMyBottles] = useState<DriftBottle[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 当前订单（监控用）
@@ -48,12 +53,50 @@ export function useGameStore() {
     }
   }, [user]);
 
+  // 加载挑战与漂流瓶
+  const loadChallenges = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [defs, active, history] = await Promise.all([
+        api.fetchChallengeDefs(),
+        api.getActiveChallenge(),
+        api.fetchChallengeHistory(20),
+      ]);
+      setChallengeDefs(defs);
+      setActiveChallenge(active && active.found ? active : null);
+      setChallengeHistory(history);
+    } catch (e) {
+      console.error('加载挑战失败', e);
+    }
+  }, [user]);
+
+  const loadBottles = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [inbox, mine] = await Promise.all([
+        api.fetchInboxBottles(user.id, 50),
+        api.fetchMyBottles(user.id, 50),
+      ]);
+      // 收件箱随机打乱，模拟"有概率被接收到"
+      const shuffled = [...inbox].sort(() => Math.random() - 0.5);
+      setInboxBottles(shuffled);
+      setMyBottles(mine);
+    } catch (e) {
+      console.error('加载漂流瓶失败', e);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (user) loadAll();
     else {
       setOrders([]); setAchievements([]); setDailyTasks([]); setFlightLogs([]); setUnlockedShips([]);
+      setActiveChallenge(null); setChallengeHistory([]); setInboxBottles([]); setMyBottles([]);
     }
   }, [user, loadAll]);
+
+  useEffect(() => {
+    if (user) { loadChallenges(); loadBottles(); }
+  }, [user, loadChallenges, loadBottles]);
 
   // 下单
   const placeOrder = useCallback(async (params: {
@@ -270,11 +313,82 @@ export function useGameStore() {
     return isTrisolarisRoute(origin, transits, dest);
   }, []);
 
+  // ===== 挑战系统 =====
+  const acceptChallenge = useCallback(async (code: string) => {
+    try {
+      const result = await api.acceptChallenge(code);
+      await loadChallenges();
+      await refreshProfile();
+      toast.success(`⚔ 已接受挑战：${result.title}`);
+      return result;
+    } catch (e: any) {
+      toast.error(e.message || '接受挑战失败');
+      return null;
+    }
+  }, [loadChallenges, refreshProfile]);
+
+  const settleChallenge = useCallback(async (challengeId: string) => {
+    try {
+      const result = await api.settleChallenge(challengeId);
+      await loadChallenges();
+      await refreshProfile();
+      await loadAll();
+      if (result.success) {
+        toast.success('🏆 挑战完成！', { description: `奖励：+${result.reward_xp} XP · +${result.reward_balance} 信用点` });
+      } else {
+        toast.error('💔 挑战未达成', { description: `惩罚：-${result.penalty_xp} XP · -${result.penalty_balance} 信用点` });
+      }
+      return result;
+    } catch (e: any) {
+      toast.error(e.message || '结算失败');
+      return null;
+    }
+  }, [loadChallenges, refreshProfile, loadAll]);
+
+  // ===== 漂流瓶系统 =====
+  const sendBottle = useCallback(async (content: string) => {
+    try {
+      await api.sendBottle(content);
+      await loadBottles();
+      toast.success('🍾 漂流瓶已投入星海', { description: '它可能在亿万光年外被某位航行员拾起…' });
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || '发送失败');
+      return false;
+    }
+  }, [loadBottles]);
+
+  const replyBottle = useCallback(async (parentId: string, content: string) => {
+    try {
+      await api.replyBottle(parentId, content);
+      await loadBottles();
+      toast.success('💬 回复已寄出');
+      return true;
+    } catch (e: any) {
+      toast.error(e.message || '回复失败');
+      return false;
+    }
+  }, [loadBottles]);
+
+  const likeBottle = useCallback(async (bottleId: string) => {
+    try {
+      const likes = await api.likeBottle(bottleId);
+      setInboxBottles((prev) => prev.map((b) => (b.id === bottleId ? { ...b, likes } : b)));
+      setMyBottles((prev) => prev.map((b) => (b.id === bottleId ? { ...b, likes } : b)));
+      return likes;
+    } catch (e: any) {
+      toast.error(e.message || '点赞失败');
+      return null;
+    }
+  }, []);
+
   return {
     user, profile, orders, achievements, dailyTasks, flightLogs, unlockedShips,
+    challengeDefs, activeChallenge, challengeHistory, inboxBottles, myBottles,
     loading, activeOrderId, setActiveOrderId,
     loadAll, placeOrder, boardOrder, cancelOrder, completeFlight,
     doSignIn, claimTask, recharge, addXp, deductBalance, saveShipConfig, addMemento, unlockExploreAchievement, selectShip, unlockShipByCode, incProgress, checkTrisolaris,
+    acceptChallenge, settleChallenge, sendBottle, replyBottle, likeBottle, loadChallenges, loadBottles,
   };
 }
 

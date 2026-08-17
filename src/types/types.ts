@@ -308,6 +308,64 @@ export interface LeaderboardEntry {
   rank: number;
 }
 
+export interface ChallengeDef {
+  code: string;
+  title: string;
+  description: string;
+  goal_type: 'flight' | 'xp';
+  goal_target: number;
+  reward_xp: number;
+  reward_balance: number;
+  penalty_xp: number;
+  penalty_balance: number;
+  duration_minutes: number;
+  sort_order: number;
+}
+
+export interface ActiveChallenge {
+  found: boolean;
+  id?: string;
+  challenge_code?: string;
+  title?: string;
+  description?: string;
+  goal_type?: 'flight' | 'xp';
+  goal_target?: number;
+  baseline?: number;
+  reward_xp?: number;
+  reward_balance?: number;
+  penalty_xp?: number;
+  penalty_balance?: number;
+  expires_at?: string;
+  progress?: number;
+  status?: string;
+}
+
+export interface ChallengeHistoryRow {
+  id: string;
+  challenge_code: string;
+  title: string;
+  goal_type: string;
+  goal_target: number;
+  progress: number;
+  status: string;
+  reward_xp: number;
+  reward_balance: number;
+  penalty_xp: number;
+  penalty_balance: number;
+  settled_at: string | null;
+  created_at: string;
+}
+
+export interface DriftBottle {
+  id: string;
+  sender_id: string;
+  parent_id: string | null;
+  content: string;
+  likes: number;
+  created_at: string;
+  sender_username?: string | null;
+}
+
 export interface DestinationDetail {
   wp: Waypoint;
   pi: string; // 物资指数

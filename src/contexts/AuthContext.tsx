@@ -142,12 +142,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // 注册统一使用首选（字面/哈希）邮箱
       const email = emailCandidates(username)[0];
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) throw error;
+      // 触发器 handle_new_user 会把 email 前缀（中文用户名时为哈希串）写入 profiles.username，
+      // 这里显式覆盖为用户输入的原始名称，确保中文名正确保存
+      if (data?.user) {
+        await supabase.from('profiles').update({ username: username.trim() }).eq('id', data.user.id);
+      }
       return { error: null };
     } catch (error) {
       return { error: error as Error };
